@@ -1,0 +1,28 @@
+{
+  "properties": [
+    {
+      "name": "app.cors.allowed-origins",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Allowed CORS origins for the frontend",
+      "sourceType": "com.sliit.campusflow.config.CorsConfig"
+    },
+    {
+      "name": "app.jwt.issuer",
+      "type": "java.lang.String",
+      "description": "JWT issuer",
+      "sourceType": "com.sliit.campusflow.config.SecurityConfig"
+    },
+    {
+      "name": "app.jwt.access-token-ttl",
+      "type": "java.time.Duration",
+      "description": "JWT access token TTL",
+      "sourceType": "com.sliit.campusflow.config.SecurityConfig"
+    },
+    {
+      "name": "app.jwt.refresh-token-ttl",
+      "type": "java.time.Duration",
+      "description": "JWT refresh token TTL",
+      "sourceType": "com.sliit.campusflow.config.SecurityConfig"
+    }
+  ]
+}

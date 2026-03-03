@@ -1,0 +1,2 @@
+-- Flyway baseline placeholder
+-- Add seed data and initial schema here

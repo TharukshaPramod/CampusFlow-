@@ -1,0 +1,9 @@
+{
+  "name": "CampusFlow",
+  "short_name": "CampusFlow",
+  "display": "standalone",
+  "start_url": "/",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": []
+}

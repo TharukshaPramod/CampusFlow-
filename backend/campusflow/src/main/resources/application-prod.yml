@@ -1,0 +1,13 @@
+spring:
+  profiles: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    root: INFO
+    "[org.springframework]": INFO
