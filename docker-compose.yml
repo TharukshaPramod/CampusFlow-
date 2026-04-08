@@ -1,32 +1,43 @@
-version: "3.9"
 services:
-  db:
-    image: postgres:16
+  postgres:
+    image: postgres:15-alpine
+    container_name: campusflow-postgres
     environment:
-      POSTGRES_DB: campusflow
+      POSTGRES_DB: campusflow_dev
       POSTGRES_USER: campusflow
       POSTGRES_PASSWORD: campusflow
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - campusflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: campusflow-redis
     ports:
       - "6379:6379"
-  backend:
-    build: ./backend/campusflow
-    env_file: .env
-    depends_on:
-      - db
-      - redis
-    ports:
-      - "8080:8080"
-  frontend:
-    build: ./frontend
-    depends_on:
-      - backend
-    ports:
-      - "5173:80"
+    volumes:
+      - redis-data:/data
+    networks:
+      - campusflow-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
-  pgdata:
+  postgres-data:
+  redis-data:
+
+networks:
+  campusflow-network:
+    driver: bridge

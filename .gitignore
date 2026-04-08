@@ -1,35 +1,48 @@
-# OS
+# OS Files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Logs
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Java / Maven / Gradle
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+.project
+.classpath
+.settings/
+.factorypath
+
+# Java / Maven (Backend)
 **/target/
 **/build/
 *.class
+*.jar
+*.war
+*.ear
+*.zip
+hs_err_pid*
 .mvn/wrapper/maven-wrapper.jar
 
-# Node / Frontend
-frontend/node_modules/
-frontend/dist/
+# Node.js / Frontend
 **/node_modules/
+**/dist/
+**/dist-ssr/
+*.local
+.eslintcache
 **/coverage/
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
-# IDE / Tooling
-.vscode/
-.idea/
-*.iml
-.classpath
-.project
-.settings/
-
-# Env
+# Environment Variables
 .env
 .env.*
 !.env.example
