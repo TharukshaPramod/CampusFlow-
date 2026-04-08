@@ -26,15 +26,25 @@ git clone <your-repo-url>
 cd CampusFlow
 ```
 
-2. Create environment file
+2. Create local environment files from templates
+
+macOS/Linux:
 ```bash
 cp .env.example .env
+cp backend/campusflow/.env.example backend/campusflow/.env
+cp frontend/.env.example frontend/.env
 ```
 
-On Windows PowerShell:
+Windows PowerShell:
 ```powershell
 Copy-Item .env.example .env
+Copy-Item backend/campusflow/.env.example backend/campusflow/.env
+Copy-Item frontend/.env.example frontend/.env
 ```
+
+Notes:
+- Fill real secret values in `backend/campusflow/.env` for your own environment.
+- Never commit any `.env` file to GitHub.
 
 3. Start infrastructure (PostgreSQL + Redis)
 ```bash
@@ -119,7 +129,10 @@ Welcome to CampusFlow.
 
 Laptop setup checklist:
 1) Install: Git, Java 21, Maven 3.9+, Node 20 LTS, Docker Desktop.
-2) Clone repo and create .env from .env.example.
+2) Clone repo and create local env files:
+	- `.env` from `.env.example`
+	- `backend/campusflow/.env` from `backend/campusflow/.env.example`
+	- `frontend/.env` from `frontend/.env.example`
 3) Start infra: docker compose up -d postgres redis
 4) Start backend: cd backend/campusflow && mvn spring-boot:run
 5) Start frontend: cd frontend && npm install && npm run dev
