@@ -64,6 +64,7 @@ spring:
         smtp:
           auth: true
           '[starttls.enable]': true
+          '[starttls.required]': true
 
   security:
     oauth2:
