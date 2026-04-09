@@ -2,6 +2,7 @@ package com.sliit.campusflow.config;
 
 import com.sliit.campusflow.modules.auth.security.JwtAuthenticationFilter;
 import com.sliit.campusflow.modules.auth.security.OAuth2AuthenticationSuccessHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +22,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
+@Slf4j
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = new String[]{
@@ -40,6 +42,9 @@ public class SecurityConfig {
 
     @Value("${app.jwt.issuer:campusflow}")
     private String jwtIssuer;
+
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     @Autowired(required = false)
     private JwtAuthenticationFilter jwtFilter;
@@ -63,7 +68,8 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // OAuth2 authorization flow requires temporary state between redirects.
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
@@ -72,8 +78,15 @@ public class SecurityConfig {
 
         // Add OAuth2 login configuration
         if (oauth2SuccessHandler != null) {
+            log.info("Configuring OAuth2 login with redirect to frontend: {}", frontendUrl);
             http.oauth2Login(oauth2 -> oauth2
-                .successHandler(oauth2SuccessHandler));
+                .successHandler(oauth2SuccessHandler)
+                .failureHandler((request, response, exception) -> {
+                    log.error("OAuth2 authentication FAILED: {}", exception.getMessage(), exception);
+                    response.sendRedirect(frontendUrl + "/login?error=oauth2_failed");
+                }));
+        } else {
+            log.warn("OAuth2SuccessHandler is NULL - OAuth2 login will not be configured!");
         }
 
         // Add JWT filter before UsernamePasswordAuthenticationFilter

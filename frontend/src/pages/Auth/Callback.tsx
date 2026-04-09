@@ -22,6 +22,8 @@ export default function AuthCallback() {
           message = 'Your account is inactive. Please contact support.';
         } else if (errorCode === 'google_email_not_available') {
           message = 'Google account email was not available. Please try a different account.';
+        } else if (errorCode === 'oauth2_failed') {
+          message = 'Google sign-in failed during authorization. Please verify your Google redirect URI and try again.';
         }
 
         setError(message);

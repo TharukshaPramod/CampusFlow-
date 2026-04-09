@@ -29,64 +29,74 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-        String email = oAuth2User.getAttribute("email");
-        String googleId = oAuth2User.getAttribute("sub");
-        String name = oAuth2User.getAttribute("name");
-        String picture = oAuth2User.getAttribute("picture");
+        try {
+            OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+            String email = oAuth2User.getAttribute("email");
+            String googleId = oAuth2User.getAttribute("sub");
+            String name = oAuth2User.getAttribute("name");
+            String picture = oAuth2User.getAttribute("picture");
 
-        log.info("OAuth2 login for email: {}", email);
+            log.info("OAuth2 login for email: {}", email);
 
-        if (email == null || email.isBlank()) {
-            getRedirectStrategy().sendRedirect(request, response,
-                    frontendUrl + "/login?error=google_email_not_available");
-            return;
+            if (email == null || email.isBlank()) {
+                getRedirectStrategy().sendRedirect(request, response,
+                        frontendUrl + "/login?error=google_email_not_available");
+                return;
+            }
+
+            User existingUser = userRepository.findByEmail(email).orElse(null);
+            if (existingUser != null && hasRestrictedRole(existingUser)) {
+                log.warn("Blocked Google OAuth login for non-user role account: {}", email);
+                getRedirectStrategy().sendRedirect(request, response,
+                        frontendUrl + "/login?error=google_user_only");
+                return;
+            }
+
+            User user = existingUser != null ? existingUser : userRepository.save(User.builder()
+                        .googleId(googleId)
+                        .email(email)
+                        .name(name)
+                        .picture(picture)
+                        .authProvider("GOOGLE")
+                        .password(null)
+                        .roles("USER")
+                        .active(true)
+                        .build());
+
+            if (user.getRoles() == null || user.getRoles().isBlank()) {
+                user.setRoles("USER");
+            }
+
+            if (!user.isActive()) {
+                getRedirectStrategy().sendRedirect(request, response,
+                        frontendUrl + "/login?error=account_inactive");
+                return;
+            }
+
+            if (googleId != null && !googleId.isBlank()) {
+                user.setGoogleId(googleId);
+            }
+            if (user.getAuthProvider() == null || user.getAuthProvider().isBlank()) {
+                user.setAuthProvider("GOOGLE");
+            }
+
+            user.setLastLogin(Instant.now());
+            if (user.getName() == null) user.setName(name);
+            if (user.getPicture() == null) user.setPicture(picture);
+            user = userRepository.save(user);
+
+            log.info("User saved: {}", user.getId());
+
+            String token = jwtUtil.generateToken(user);
+            log.info("JWT token generated successfully");
+            
+            String redirectUrl = frontendUrl + "/auth/callback?token=" + token;
+            log.info("Redirecting to: {}", redirectUrl);
+            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+        } catch (Exception e) {
+            log.error("OAuth2 authentication failed with exception", e);
+            throw new IOException("OAuth2 authentication failed", e);
         }
-
-        User existingUser = userRepository.findByEmail(email).orElse(null);
-        if (existingUser != null && hasRestrictedRole(existingUser)) {
-            log.warn("Blocked Google OAuth login for non-user role account: {}", email);
-            getRedirectStrategy().sendRedirect(request, response,
-                    frontendUrl + "/login?error=google_user_only");
-            return;
-        }
-
-        User user = existingUser != null ? existingUser : userRepository.save(User.builder()
-                    .googleId(googleId)
-                    .email(email)
-                    .name(name)
-                    .picture(picture)
-                    .authProvider("GOOGLE")
-                    .password(null)
-                    .roles("USER")
-                    .active(true)
-                    .build());
-
-        if (user.getRoles() == null || user.getRoles().isBlank()) {
-            user.setRoles("USER");
-        }
-
-        if (!user.isActive()) {
-            getRedirectStrategy().sendRedirect(request, response,
-                    frontendUrl + "/login?error=account_inactive");
-            return;
-        }
-
-        if (googleId != null && !googleId.isBlank()) {
-            user.setGoogleId(googleId);
-        }
-        if (user.getAuthProvider() == null || user.getAuthProvider().isBlank()) {
-            user.setAuthProvider("GOOGLE");
-        }
-
-        user.setLastLogin(Instant.now());
-        if (user.getName() == null) user.setName(name);
-        if (user.getPicture() == null) user.setPicture(picture);
-        user = userRepository.save(user);
-
-        String token = jwtUtil.generateToken(user);
-        String redirectUrl = frontendUrl + "/auth/callback?token=" + token;
-        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 
     private boolean hasRestrictedRole(User user) {
