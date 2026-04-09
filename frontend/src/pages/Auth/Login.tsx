@@ -21,7 +21,7 @@ export default function Login() {
     confirmPassword: '',
   });
 
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/" replace />;
 
   useEffect(() => {
     const errorCode = searchParams.get('error');
@@ -100,7 +100,7 @@ export default function Login() {
         });
         login(res.data.token);
         toast.success('Welcome back!');
-        navigate('/dashboard', { replace: true });
+        navigate('/', { replace: true });
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Something went wrong');

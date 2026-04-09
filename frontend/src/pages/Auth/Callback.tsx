@@ -39,7 +39,7 @@ export default function AuthCallback() {
           login(token);
           toast.success('Welcome! Signed in with Google');
           setTimeout(() => {
-            navigate('/dashboard', { replace: true });
+            navigate('/', { replace: true });
           }, 100);
         } catch (err: any) {
           console.error('Error during login:', err);

@@ -55,7 +55,7 @@ export const DashboardNavbar = () => {
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
                   <button className="w-full px-4 py-3 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors text-sm">
                     <User className="w-4 h-4" />
-                    Profile Settings
+                    Profile
                   </button>
                   <button
                     onClick={() => {
