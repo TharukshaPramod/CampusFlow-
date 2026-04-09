@@ -6,6 +6,7 @@ import Incidents from "./pages/Incidents/Incidents";
 import Notifications from "./pages/Notifications/Notifications";
 import Dashboard from "./pages/Admin/Dashboard";
 import Login from "./pages/Auth/Login";
+import AuthCallback from "./pages/Auth/Callback";
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 
@@ -15,9 +16,11 @@ function App() {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
       </Route>
       
       <Route element={<DashboardLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/incidents" element={<Incidents />} />

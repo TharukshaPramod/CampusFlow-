@@ -4,9 +4,9 @@ spring:
   
   # Database Configuration with Supabase
   datasource:
-    url: ${SUPABASE_DB_URL:jdbc:postgresql://localhost:5432/campusflow}
-    username: ${SUPABASE_DB_USER:campusflow}
-    password: ${SUPABASE_DB_PASSWORD:campusflow}
+    url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
+    username: postgres.utjdyyhbhzqogpazbqtb
+    password: Tharu@21247
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -20,7 +20,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
     properties:
       hibernate:
         '[format_sql]': true
@@ -31,10 +31,10 @@ spring:
     show-sql: false
 
   flyway:
-    enabled: true
+    enabled: false
     baseline-on-migrate: true
     locations: classpath:db/migration
-    validate-on-migrate: true
+    validate-on-migrate: false
     out-of-order: false
 
   data:
@@ -71,10 +71,10 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: 1033050265886-d524ltn2c4241s95f37o8a6gc290hn2e.apps.googleusercontent.com
+            client-secret: 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
             scope: email,profile
-            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            redirect-uri: http://localhost:8080/login/oauth2/code/google
             client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
         provider:
@@ -108,11 +108,15 @@ management:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ORIGINS:*}
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5175}
   jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    expiration: 900000
     issuer: campusflow
     access-token-ttl: 15m
     refresh-token-ttl: 7d
+  frontend:
+    url: ${APP_FRONTEND_URL:http://localhost:5175}
 
 # Supabase specific configuration
 supabase:
