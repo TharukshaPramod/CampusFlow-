@@ -5,7 +5,17 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import api from '../../services/api/client';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'verify';
+
+const getRedirectPathFromToken = (jwtToken: string) => {
+  try {
+    const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+    const roles = (payload.roles || []).map((r: string) => r.replace('ROLE_', ''));
+    return roles.includes('ADMIN') ? '/' : '/dashboard';
+  } catch {
+    return '/dashboard';
+  }
+};
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -14,6 +24,14 @@ export default function Login() {
   const [mode, setMode] = useState<Mode>('login');
   const [oauthLoading, setOauthLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [touched, setTouched] = useState({
+    name: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+  });
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
 
   const [form, setForm] = useState({
     name: '',
@@ -22,7 +40,7 @@ export default function Login() {
     confirmPassword: '',
   });
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={user.roles?.includes('ADMIN') ? '/' : '/dashboard'} replace />;
 
   useEffect(() => {
     const errorCode = searchParams.get('error');
@@ -64,36 +82,62 @@ export default function Login() {
   const switchMode = (newMode: Mode) => {
     setMode(newMode);
     setForm({ name: '', email: '', password: '', confirmPassword: '' });
+    setTouched({ name: false, email: false, password: false, confirmPassword: false });
+    if (newMode !== 'verify') {
+      setPendingEmail('');
+      setVerificationCode('');
+    }
   };
+
+  const nameValue = form.name.trim();
+  const emailValue = form.email.trim();
+  const nameIsValid = nameValue.length > 0 && /^[A-Za-z\s]+$/.test(nameValue);
+  const emailIsValid = emailValue.length > 0 && /^[^\s@]+@gmail\.com$/i.test(emailValue);
+  const passwordRules = {
+    length: form.password.length >= 6 && form.password.length <= 8,
+    uppercase: /[A-Z]/.test(form.password),
+    number: /\d/.test(form.password),
+    symbol: /[@#$]/.test(form.password),
+  };
+  const passwordIsValid = Object.values(passwordRules).every(Boolean);
+  const confirmMatches = form.password.length > 0 && form.password === form.confirmPassword;
+  const verificationCodeIsValid = /^\d{6}$/.test(verificationCode.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (mode === 'verify') {
+      if (!verificationCodeIsValid || !pendingEmail) {
+        return;
+      }
+    }
+
     if (mode === 'register') {
-      if (form.password !== form.confirmPassword) {
-        toast.error('Passwords do not match');
-        return;
-      }
-      if (form.password.length < 6) {
-        toast.error('Password must be at least 6 characters');
-        return;
-      }
-      if (!form.name.trim()) {
-        toast.error('Full name is required');
+      setTouched({ name: true, email: true, password: true, confirmPassword: true });
+      if (!nameIsValid || !emailIsValid || !passwordIsValid || !confirmMatches) {
         return;
       }
     }
 
     setFormLoading(true);
     try {
-      if (mode === 'register') {
+      if (mode === 'verify') {
+        await api.post('/auth/verify-email', {
+          email: pendingEmail,
+          code: verificationCode.trim(),
+        });
+        toast.success('Email verified. Please sign in.');
+        switchMode('login');
+      } else if (mode === 'register') {
         await api.post('/auth/register', {
           name: form.name.trim(),
           email: form.email.trim(),
           password: form.password,
         });
-        toast.success('Account created! Please sign in.');
-        switchMode('login');
+        toast.success('Verification code sent to your email.');
+        setPendingEmail(form.email.trim());
+        setVerificationCode('');
+        setMode('verify');
       } else {
         const res = await api.post('/auth/login', {
           email: form.email.trim(),
@@ -101,10 +145,16 @@ export default function Login() {
         });
         login(res.data.token);
         toast.success('Welcome back!');
-        navigate('/', { replace: true });
+        navigate(getRedirectPathFromToken(res.data.token), { replace: true });
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Something went wrong');
+      const message = err.response?.data?.message || 'Something went wrong';
+      if (mode === 'login' && message === 'Invalid email or password') {
+        window.alert('wrong crendentials');
+        window.location.reload();
+        return;
+      }
+      toast.error(message);
     } finally {
       setFormLoading(false);
     }
@@ -149,12 +199,14 @@ export default function Login() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Access</p>
                 <h3 className="mt-2 text-2xl font-bold text-slate-900">
-                  {mode === 'login' ? 'Welcome back' : 'Create account'}
+                  {mode === 'login' ? 'Welcome back' : mode === 'verify' ? 'Verify email' : 'Create account'}
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
                   {mode === 'login'
                     ? 'Sign in to continue managing your campus.'
-                    : 'Join CampusFlow and start collaborating today.'}
+                    : mode === 'verify'
+                      ? 'Enter the verification code we sent to your email.'
+                      : 'Join CampusFlow and start collaborating today.'}
                 </p>
               </div>
               <div className="hidden sm:flex rounded-full bg-slate-100 p-1">
@@ -231,38 +283,70 @@ export default function Login() {
                       className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
                       required
                     />
+                    {touched.name && !nameIsValid && (
+                      <p className="mt-2 text-xs font-semibold text-red-500">Enter a valid Name</p>
+                    )}
                   </motion.div>
                 )}
 
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Email address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="name@email.com"
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                  />
-                </div>
+                {mode !== 'verify' && (
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Email address
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="name@email.com"
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+                      required
+                    />
+                    {mode === 'register' && touched.email && !emailIsValid && (
+                      <p className="mt-2 text-xs font-semibold text-red-500">Enter a valid email address</p>
+                    )}
+                  </div>
+                )}
 
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Enter your password"
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    required
-                  />
-                </div>
+                {mode !== 'verify' && (
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Enter your password"
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+                      required
+                    />
+                    {mode === 'register' && (
+                      <div className="mt-3 space-y-1 text-xs">
+                        <p className={`font-semibold ${passwordRules.length ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          [{passwordRules.length ? 'x' : ' '}] 6-8 characters
+                        </p>
+                        <p className={`font-semibold ${passwordRules.uppercase ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          [{passwordRules.uppercase ? 'x' : ' '}] At least one uppercase letter
+                        </p>
+                        <p className={`font-semibold ${passwordRules.number ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          [{passwordRules.number ? 'x' : ' '}] At least one number
+                        </p>
+                        <p className={`font-semibold ${passwordRules.symbol ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          [{passwordRules.symbol ? 'x' : ' '}] Include @, #, or $
+                        </p>
+                      </div>
+                    )}
+                    {mode === 'register' && touched.password && !passwordIsValid && (
+                      <p className="mt-2 text-xs font-semibold text-red-500">Enter a valid password</p>
+                    )}
+                  </div>
+                )}
 
                 {mode === 'register' && (
                   <motion.div
@@ -279,29 +363,68 @@ export default function Login() {
                       className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       value={form.confirmPassword}
                       onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                      onBlur={() => setTouched((prev) => ({ ...prev, confirmPassword: true }))}
                       required
                     />
+                    {touched.confirmPassword && form.confirmPassword.length > 0 && !confirmMatches && (
+                      <p className="mt-2 text-xs font-semibold text-red-500">Passwords do not match</p>
+                    )}
                   </motion.div>
                 )}
 
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
-                    Remember me
-                  </label>
-                  {mode === 'login' && (
-                    <a href="/forgot-password" className="font-semibold text-primary hover:text-primary-dark">
-                      Forgot password?
-                    </a>
-                  )}
-                </div>
+                {mode === 'verify' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Verification code
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Enter 6-digit code"
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      required
+                    />
+                    {!verificationCodeIsValid && verificationCode.length > 0 && (
+                      <p className="mt-2 text-xs font-semibold text-red-500">Enter a valid verification code</p>
+                    )}
+                    {pendingEmail && (
+                      <p className="mt-2 text-xs text-slate-500">Sent to {pendingEmail}</p>
+                    )}
+                  </motion.div>
+                )}
+
+                {mode !== 'verify' && (
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
+                      Remember me
+                    </label>
+                    {mode === 'login' && (
+                      <a href="/forgot-password" className="font-semibold text-primary hover:text-primary-dark">
+                        Forgot password?
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 <button
                   type="submit"
                   disabled={formLoading}
                   className="w-full rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:shadow-xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {formLoading ? 'Loading...' : mode === 'login' ? 'Login' : 'Create account'}
+                  {formLoading
+                    ? 'Loading...'
+                    : mode === 'login'
+                      ? 'Login'
+                      : mode === 'verify'
+                        ? 'Verify email'
+                        : 'Create account'}
                 </button>
               </motion.form>
             </AnimatePresence>
@@ -322,16 +445,29 @@ export default function Login() {
               Continue with Google
             </button>
 
-            <div className="mt-6 text-center text-sm text-slate-500">
-              {mode === 'login' ? 'Not a member yet?' : 'Already have an account?'}
-              <button
-                type="button"
-                onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-                className="ml-2 font-semibold text-primary hover:text-primary-dark"
-              >
-                {mode === 'login' ? 'Sign up' : 'Sign in'}
-              </button>
-            </div>
+            {mode !== 'verify' ? (
+              <div className="mt-6 text-center text-sm text-slate-500">
+                {mode === 'login' ? 'Not a member yet?' : 'Already have an account?'}
+                <button
+                  type="button"
+                  onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
+                  className="ml-2 font-semibold text-primary hover:text-primary-dark"
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-6 text-center text-sm text-slate-500">
+                Back to
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="ml-2 font-semibold text-primary hover:text-primary-dark"
+                >
+                  Sign in
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

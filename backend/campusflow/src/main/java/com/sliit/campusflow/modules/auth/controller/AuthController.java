@@ -2,8 +2,10 @@ package com.sliit.campusflow.modules.auth.controller;
 
 import com.sliit.campusflow.modules.auth.dto.request.LoginRequest;
 import com.sliit.campusflow.modules.auth.dto.request.RegisterRequest;
+import com.sliit.campusflow.modules.auth.model.EmailVerificationToken;
 import com.sliit.campusflow.modules.auth.model.PasswordResetToken;
 import com.sliit.campusflow.modules.auth.model.User;
+import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.PasswordResetTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
 import com.sliit.campusflow.modules.auth.security.JwtUtil;
@@ -17,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
+import java.security.SecureRandom;
 import java.util.*;
 
 @RestController
@@ -26,9 +29,14 @@ public class AuthController {
 
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordResetTokenRepository tokenRepository;
+    @Autowired private EmailVerificationTokenRepository emailVerificationTokenRepository;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EmailService emailService;
+
+    private static final int EMAIL_CODE_LENGTH = 6;
+    private static final int EMAIL_CODE_TTL_SECONDS = 600;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     /**
      * POST /api/auth/register
@@ -48,10 +56,19 @@ public class AuthController {
         user.setAuthProvider("LOCAL");
         user.setRoles("USER");
         user.setActive(true);
-        
+
         userRepository.save(user);
+        String verificationCode = generateVerificationCode();
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setCode(verificationCode);
+        token.setUser(user);
+        token.setExpiryDate(Instant.now().plusSeconds(EMAIL_CODE_TTL_SECONDS));
+        emailVerificationTokenRepository.deleteByUserId(user.getId());
+        emailVerificationTokenRepository.save(token);
+        emailService.sendVerificationCodeEmail(user.getEmail(), verificationCode);
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Registration successful. Please log in."));
+            .body(Map.of("message", "Verification code sent to email"));
     }
 
     /**
@@ -68,6 +85,10 @@ public class AuthController {
         }
 
         User u = user.get();
+        if (!u.isEmailVerified()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("message", "Email not verified"));
+        }
         if (!u.isActive()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Account is inactive"));
@@ -86,6 +107,56 @@ public class AuthController {
                 "roles", u.getRoles()
             )
         ));
+    }
+
+    /**
+     * POST /api/auth/verify-email
+     * Public - verify email using OTP code
+     */
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String code = body.get("code");
+
+        if (email == null || email.isBlank() || code == null || code.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email and code are required"));
+        }
+
+        var userOpt = userRepository.findByEmail(email.toLowerCase());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found"));
+        }
+
+        User user = userOpt.get();
+        if (user.isEmailVerified()) {
+            return ResponseEntity.ok(Map.of("message", "Email already verified"));
+        }
+
+        var tokenOpt = emailVerificationTokenRepository.findByUserIdAndCode(user.getId(), code.trim());
+        if (tokenOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid verification code"));
+        }
+
+        EmailVerificationToken token = tokenOpt.get();
+        if (token.getExpiryDate() != null && token.getExpiryDate().isBefore(Instant.now())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Verification code expired"));
+        }
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        emailVerificationTokenRepository.deleteByUserId(user.getId());
+
+        return ResponseEntity.ok(Map.of("message", "Email verified successfully"));
+    }
+
+    private String generateVerificationCode() {
+        int min = (int) Math.pow(10, EMAIL_CODE_LENGTH - 1);
+        int max = (int) Math.pow(10, EMAIL_CODE_LENGTH) - 1;
+        int code = secureRandom.nextInt(max - min + 1) + min;
+        return Integer.toString(code);
     }
 
     /**

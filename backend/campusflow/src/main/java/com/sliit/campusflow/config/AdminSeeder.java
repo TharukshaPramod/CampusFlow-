@@ -21,7 +21,7 @@ public class AdminSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            createAdminIfNotExists("System Admin", "admin@campusflow.edu", "Admin@2026");
+            createAdminIfNotExists("System Admin", "shivantha008@gmail.com", "Admin@20");
             log.info("✅ AdminSeeder completed successfully");
         } catch (Exception e) {
             log.error("❌ AdminSeeder failed: {}", e.getMessage());
@@ -35,13 +35,15 @@ public class AdminSeeder implements CommandLineRunner {
             
             if (existingUser.isPresent()) {
                 User user = existingUser.get();
-                if (user.getRoles() != null && user.getRoles().contains("ADMIN")) {
-                    log.info("⏭️ Admin already exists: {}", email);
-                    return;
-                }
+                // Keep seeded admin always login-ready for local auth flow.
                 user.setRoles("ADMIN");
+                user.setName(name);
+                user.setAuthProvider("LOCAL");
+                user.setActive(true);
+                user.setEmailVerified(true);
+                user.setPassword(passwordEncoder.encode(rawPassword));
                 userRepository.save(user);
-                log.info("✅ User promoted to ADMIN: {}", email);
+                log.info("✅ Existing user synced as ADMIN and verified: {}", email);
                 return;
             }
 
@@ -52,6 +54,7 @@ public class AdminSeeder implements CommandLineRunner {
             admin.setAuthProvider("LOCAL");
             admin.setRoles("ADMIN");
             admin.setActive(true);
+            admin.setEmailVerified(true);
             
             userRepository.save(admin);
             log.info("✅ Admin account created: {}", email);

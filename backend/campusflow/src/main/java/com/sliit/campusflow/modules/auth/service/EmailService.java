@@ -39,4 +39,18 @@ public class EmailService {
             log.error("Failed to send admin invite email to {}: {}", to, e.getMessage());
         }
     }
+
+    public void sendVerificationCodeEmail(String to, String code) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject("CampusFlow - Verify your email");
+            message.setText("Your verification code is: " + code + "\n\n" +
+                    "This code expires in 10 minutes.");
+            mailSender.send(message);
+            log.info("Verification code email sent to {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send verification email to {}: {}", to, e.getMessage());
+        }
+    }
 }

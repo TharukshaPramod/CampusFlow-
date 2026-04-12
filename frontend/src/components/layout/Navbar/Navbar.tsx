@@ -35,6 +35,11 @@ export const Navbar = () => {
     ...link,
     path: user || link.path === '/' ? link.path : '/login'
   }));
+  const dashboardPath = user
+    ? user.roles?.includes('ADMIN')
+      ? '/admin'
+      : '/dashboard'
+    : '/login';
 
   return (
     <>
@@ -133,7 +138,7 @@ export const Navbar = () => {
                 </Link>
               )}
               <Link 
-                to={user ? "/dashboard" : "/login"}
+                to={dashboardPath}
                 className="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md active:scale-95"
               >
                 Dashboard
@@ -203,7 +208,7 @@ export const Navbar = () => {
                   </Link>
                 )}
                 <Link 
-                  to={user ? "/dashboard" : "/login"}
+                  to={dashboardPath}
                   className="w-full text-center py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark shadow-sm"
                   onClick={() => setMobileMenuOpen(false)}
                 >
