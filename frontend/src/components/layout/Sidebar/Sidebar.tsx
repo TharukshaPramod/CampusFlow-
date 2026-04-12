@@ -10,6 +10,7 @@ const userLinks = [
 
 const adminLinks = [
   { to: "/", label: "Home" },
+  { to: "/admin", label: "Admin Dashboard" },
   { to: "/admin/users", label: "User Management" }
 ];
 
