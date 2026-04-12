@@ -120,6 +120,13 @@
 			<version>${springdoc.version}</version>
 		</dependency>
 
+		<!--Handles the PostgreSQL array and JSONB type mappings cleanly-->
+		<dependency>
+    		<groupId>io.hypersistence</groupId>
+    		<artifactId>hypersistence-utils-hibernate-63</artifactId>
+    		<version>3.7.3</version>
+		</dependency>
+
 		<!-- Mapping -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>
