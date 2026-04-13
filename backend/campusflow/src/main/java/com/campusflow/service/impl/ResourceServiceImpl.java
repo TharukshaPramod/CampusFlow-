@@ -8,6 +8,7 @@ import com.campusflow.model.ResourceType;
 import com.campusflow.repository.ResourceRepository;
 import com.campusflow.repository.ResourceTypeRepository;
 import com.campusflow.service.ResourceService;
+import com.campusflow.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     public ResourceResponse createResource(ResourceRequest request, String createdBy) {
+
         ResourceType resourceType = null;
         if (request.getResourceTypeId() != null) {
             resourceType = resourceTypeRepository.findById(request.getResourceTypeId())
@@ -79,7 +81,7 @@ public class ResourceServiceImpl implements ResourceService {
             Boolean requiresApproval) {
 
         return resourceRepository.searchResources(
-                        status, building, location, minCapacity, resourceTypeId, requiresApproval)
+                status, building, location, minCapacity, resourceTypeId, requiresApproval)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -87,6 +89,7 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     public ResourceResponse updateResource(UUID id, ResourceRequest request, String updatedBy) {
+
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with id: " + id));
 
@@ -104,13 +107,15 @@ public class ResourceServiceImpl implements ResourceService {
         resource.setBuilding(request.getBuilding());
         resource.setFloor(request.getFloor());
         resource.setCapacity(request.getCapacity());
-        if (request.getStatus() != null) resource.setStatus(request.getStatus());
+        if (request.getStatus() != null)
+            resource.setStatus(request.getStatus());
         resource.setAvailableDays(request.getAvailableDays());
         resource.setAvailableFrom(request.getAvailableFrom());
         resource.setAvailableTo(request.getAvailableTo());
         resource.setImages(request.getImages());
         resource.setMetadata(request.getMetadata());
-        if (request.getRequiresApproval() != null) resource.setRequiresApproval(request.getRequiresApproval());
+        if (request.getRequiresApproval() != null)
+            resource.setRequiresApproval(request.getRequiresApproval());
         resource.setUpdatedBy(updatedBy);
 
         return toResponse(resourceRepository.save(resource));
