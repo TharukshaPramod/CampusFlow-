@@ -25,14 +25,17 @@ public class EmailService {
         }
     }
 
-    public void sendAdminInviteEmail(String to, String inviteToken, String role) {
+    public void sendAdminInviteEmail(String to, String name, String inviteToken, String role) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);
             message.setSubject("CampusFlow - Join as " + role);
-            String inviteLink = "http://localhost:5173/auth/accept-invite?token=" + inviteToken + "&role=" + role;
-            message.setText("You've been invited to join CampusFlow as a " + role + ".\n\n" + 
-                          "Accept invitation:\n" + inviteLink);
+            String inviteLink = "http://localhost:5173/auth/accept-invite?token=" + inviteToken;
+            message.setText("Hi " + name + ",\n\n" +
+                    "You've been invited to join CampusFlow as an " + role + ".\n" +
+                    "Use the link below to set your password and verify your email with OTP:\n\n" +
+                    inviteLink + "\n\n" +
+                    "This invitation expires in 24 hours.");
             mailSender.send(message);
             log.info("Admin invite email sent to {}", to);
         } catch (Exception e) {

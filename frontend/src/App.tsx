@@ -9,6 +9,7 @@ import Users from "./pages/Admin/Users";
 import Profile from "./pages/Profile/Profile";
 import Login from "./pages/Auth/Login";
 import AuthCallback from "./pages/Auth/Callback";
+import AcceptInvite from "./pages/Auth/AcceptInvite";
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { useAuth } from "./hooks/useAuth";
@@ -52,6 +53,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/accept-invite" element={<AcceptInvite />} />
       </Route>
 
       <Route

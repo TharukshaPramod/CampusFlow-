@@ -2,9 +2,11 @@ package com.sliit.campusflow.modules.auth.controller;
 
 import com.sliit.campusflow.modules.auth.dto.request.LoginRequest;
 import com.sliit.campusflow.modules.auth.dto.request.RegisterRequest;
+import com.sliit.campusflow.modules.auth.model.AdminInvitationToken;
 import com.sliit.campusflow.modules.auth.model.EmailVerificationToken;
 import com.sliit.campusflow.modules.auth.model.PasswordResetToken;
 import com.sliit.campusflow.modules.auth.model.User;
+import com.sliit.campusflow.modules.auth.repository.AdminInvitationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.PasswordResetTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
@@ -29,6 +31,7 @@ public class AuthController {
 
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordResetTokenRepository tokenRepository;
+    @Autowired private AdminInvitationTokenRepository adminInvitationTokenRepository;
     @Autowired private EmailVerificationTokenRepository emailVerificationTokenRepository;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -36,6 +39,7 @@ public class AuthController {
 
     private static final int EMAIL_CODE_LENGTH = 6;
     private static final int EMAIL_CODE_TTL_SECONDS = 600;
+    private static final int ADMIN_INVITE_TTL_SECONDS = 86400;
     private final SecureRandom secureRandom = new SecureRandom();
 
     /**
@@ -239,20 +243,180 @@ public class AuthController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> inviteAdmin(
             @RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        String role = body.getOrDefault("role", "USER"); // ADMIN, TECHNICIAN, USER
+        try {
+            String email = body.getOrDefault("email", "").trim().toLowerCase();
+            String name = body.getOrDefault("name", "").trim();
 
-        if (userRepository.existsByEmail(email.toLowerCase())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", "Email already exists"));
+            if (name.isBlank() || email.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Name and email are required"));
+            }
+
+            if (!email.endsWith("@gmail.com")) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Email must be a gmail address"));
+            }
+
+            if (userRepository.existsByEmail(email)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("message", "Email already exists"));
+            }
+
+                String inviteToken = UUID.randomUUID().toString();
+
+                AdminInvitationToken invitationToken = adminInvitationTokenRepository
+                    .findFirstByEmailOrderByCreatedAtDesc(email)
+                    .orElseGet(AdminInvitationToken::new);
+                invitationToken.setToken(inviteToken);
+                invitationToken.setName(name);
+                invitationToken.setEmail(email);
+                invitationToken.setRole("ADMIN");
+                invitationToken.setExpiryDate(Instant.now().plusSeconds(ADMIN_INVITE_TTL_SECONDS));
+                invitationToken.setAccepted(false);
+                invitationToken.setUserId(null);
+            adminInvitationTokenRepository.save(invitationToken);
+
+            emailService.sendAdminInviteEmail(email, name, inviteToken, "ADMIN");
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Invitation sent to " + email,
+                "token", inviteToken
+            ));
+        } catch (Exception e) {
+            log.error("Failed to invite admin: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to send admin invitation"));
+        }
+    }
+
+    @GetMapping("/verify-admin-invite")
+    public ResponseEntity<?> verifyAdminInvite(@RequestParam String token) {
+        Optional<AdminInvitationToken> inviteOpt = adminInvitationTokenRepository.findByToken(token);
+        if (inviteOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Invalid invitation token"));
         }
 
-        String inviteToken = UUID.randomUUID().toString();
-        emailService.sendAdminInviteEmail(email, inviteToken, role);
+        AdminInvitationToken invite = inviteOpt.get();
+        if (invite.isAccepted()) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Invitation already used"));
+        }
+
+        if (invite.getExpiryDate().isBefore(Instant.now())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Invitation expired"));
+        }
 
         return ResponseEntity.ok(Map.of(
-            "message", "Invitation sent to " + email,
-            "token", inviteToken
+                "name", invite.getName(),
+                "email", invite.getEmail(),
+                "role", invite.getRole()
         ));
+    }
+
+    @PostMapping("/accept-admin-invite")
+    public ResponseEntity<?> acceptAdminInvite(@RequestBody Map<String, String> body) {
+        String token = body.getOrDefault("token", "").trim();
+        String password = body.getOrDefault("password", "").trim();
+
+        if (token.isBlank() || password.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Token and password are required"));
+        }
+
+        Optional<AdminInvitationToken> inviteOpt = adminInvitationTokenRepository.findByToken(token);
+        if (inviteOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Invalid invitation token"));
+        }
+
+        AdminInvitationToken invite = inviteOpt.get();
+        if (invite.isAccepted()) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Invitation already used"));
+        }
+
+        if (invite.getExpiryDate().isBefore(Instant.now())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Invitation expired"));
+        }
+
+        User user = userRepository.findByEmail(invite.getEmail()).orElseGet(User::new);
+        user.setName(invite.getName());
+        user.setEmail(invite.getEmail());
+        user.setPassword(passwordEncoder.encode(password));
+        user.setAuthProvider("LOCAL");
+        user.setRoles(invite.getRole());
+        user.setActive(true);
+        user.setEmailVerified(false);
+        user = userRepository.save(user);
+
+        String verificationCode = generateVerificationCode();
+        EmailVerificationToken emailToken = new EmailVerificationToken();
+        emailToken.setCode(verificationCode);
+        emailToken.setUser(user);
+        emailToken.setExpiryDate(Instant.now().plusSeconds(EMAIL_CODE_TTL_SECONDS));
+        emailVerificationTokenRepository.deleteByUserId(user.getId());
+        emailVerificationTokenRepository.save(emailToken);
+        emailService.sendVerificationCodeEmail(user.getEmail(), verificationCode);
+
+        invite.setUserId(user.getId());
+        adminInvitationTokenRepository.save(invite);
+
+        return ResponseEntity.ok(Map.of("message", "Password set. OTP sent to email"));
+    }
+
+    @PostMapping("/verify-admin-invite-otp")
+    public ResponseEntity<?> verifyAdminInviteOtp(@RequestBody Map<String, String> body) {
+        String token = body.getOrDefault("token", "").trim();
+        String code = body.getOrDefault("code", "").trim();
+
+        if (token.isBlank() || code.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Token and code are required"));
+        }
+
+        Optional<AdminInvitationToken> inviteOpt = adminInvitationTokenRepository.findByToken(token);
+        if (inviteOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Invalid invitation token"));
+        }
+
+        AdminInvitationToken invite = inviteOpt.get();
+        if (invite.isAccepted()) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Invitation already used"));
+        }
+
+        if (invite.getExpiryDate().isBefore(Instant.now())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Invitation expired"));
+        }
+
+        User user;
+        if (invite.getUserId() != null) {
+            user = userRepository.findById(invite.getUserId())
+                    .orElseThrow(() -> new NoSuchElementException("User not found"));
+        } else {
+            user = userRepository.findByEmail(invite.getEmail())
+                    .orElseThrow(() -> new NoSuchElementException("User not found"));
+        }
+
+        Optional<EmailVerificationToken> emailTokenOpt = emailVerificationTokenRepository.findByUserIdAndCode(user.getId(), code);
+        if (emailTokenOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid verification code"));
+        }
+
+        EmailVerificationToken emailToken = emailTokenOpt.get();
+        if (emailToken.getExpiryDate() != null && emailToken.getExpiryDate().isBefore(Instant.now())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Verification code expired"));
+        }
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        emailVerificationTokenRepository.deleteByUserId(user.getId());
+        invite.setAccepted(true);
+        adminInvitationTokenRepository.save(invite);
+
+        return ResponseEntity.ok(Map.of("message", "Invitation accepted. You can now log in."));
     }
 }

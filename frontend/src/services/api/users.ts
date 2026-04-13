@@ -17,3 +17,8 @@ export async function deleteUser(id: string) {
   const { data } = await apiClient.delete(`/users/${id}`);
   return data;
 }
+
+export async function inviteAdmin(payload: { name: string; email: string }) {
+  const { data } = await apiClient.post("/auth/invite-admin", payload);
+  return data;
+}
