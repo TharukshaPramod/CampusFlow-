@@ -89,7 +89,10 @@ export default function AcceptInvite() {
     try {
       await api.post("/auth/verify-admin-invite-otp", { token, code: otp.trim() });
       toast.success("Verification complete. Please login.");
-      navigate("/login", { replace: true });
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.replace("/login");
+      return;
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "OTP verification failed");
     } finally {

@@ -301,7 +301,7 @@ public class AuthController {
                     .body(Map.of("message", "Invitation already used"));
         }
 
-        if (invite.getExpiryDate().isBefore(Instant.now())) {
+        if (invite.getExpiryDate() == null || invite.getExpiryDate().isBefore(Instant.now())) {
             return ResponseEntity.status(HttpStatus.GONE)
                     .body(Map.of("message", "Invitation expired"));
         }
@@ -334,7 +334,7 @@ public class AuthController {
                     .body(Map.of("message", "Invitation already used"));
         }
 
-        if (invite.getExpiryDate().isBefore(Instant.now())) {
+        if (invite.getExpiryDate() == null || invite.getExpiryDate().isBefore(Instant.now())) {
             return ResponseEntity.status(HttpStatus.GONE)
                     .body(Map.of("message", "Invitation expired"));
         }
@@ -366,57 +366,64 @@ public class AuthController {
 
     @PostMapping("/verify-admin-invite-otp")
     public ResponseEntity<?> verifyAdminInviteOtp(@RequestBody Map<String, String> body) {
-        String token = body.getOrDefault("token", "").trim();
-        String code = body.getOrDefault("code", "").trim();
+        try {
+            String token = body.getOrDefault("token", "").trim();
+            String code = body.getOrDefault("code", "").trim();
 
-        if (token.isBlank() || code.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Token and code are required"));
+            if (token.isBlank() || code.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Token and code are required"));
+            }
+
+            Optional<AdminInvitationToken> inviteOpt = adminInvitationTokenRepository.findByToken(token);
+            if (inviteOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "Invalid invitation token"));
+            }
+
+            AdminInvitationToken invite = inviteOpt.get();
+            if (invite.isAccepted()) {
+                return ResponseEntity.status(HttpStatus.GONE)
+                        .body(Map.of("message", "Invitation already used"));
+            }
+
+            if (invite.getExpiryDate() == null || invite.getExpiryDate().isBefore(Instant.now())) {
+                return ResponseEntity.status(HttpStatus.GONE)
+                        .body(Map.of("message", "Invitation expired"));
+            }
+
+            Optional<User> userOpt = invite.getUserId() != null
+                    ? userRepository.findById(invite.getUserId())
+                    : userRepository.findByEmail(invite.getEmail());
+
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "Invited user not found. Please restart invite flow."));
+            }
+
+            User user = userOpt.get();
+            Optional<EmailVerificationToken> emailTokenOpt = emailVerificationTokenRepository.findByUserIdAndCode(user.getId(), code);
+            if (emailTokenOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Invalid verification code"));
+            }
+
+            EmailVerificationToken emailToken = emailTokenOpt.get();
+            if (emailToken.getExpiryDate() != null && emailToken.getExpiryDate().isBefore(Instant.now())) {
+                return ResponseEntity.status(HttpStatus.GONE)
+                        .body(Map.of("message", "Verification code expired"));
+            }
+
+            user.setEmailVerified(true);
+            userRepository.save(user);
+            emailVerificationTokenRepository.deleteByUserId(user.getId());
+            invite.setAccepted(true);
+            adminInvitationTokenRepository.save(invite);
+
+            return ResponseEntity.ok(Map.of("message", "Invitation accepted. You can now log in."));
+        } catch (Exception e) {
+            log.error("Failed to verify admin invitation OTP: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to verify OTP"));
         }
-
-        Optional<AdminInvitationToken> inviteOpt = adminInvitationTokenRepository.findByToken(token);
-        if (inviteOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Invalid invitation token"));
-        }
-
-        AdminInvitationToken invite = inviteOpt.get();
-        if (invite.isAccepted()) {
-            return ResponseEntity.status(HttpStatus.GONE)
-                    .body(Map.of("message", "Invitation already used"));
-        }
-
-        if (invite.getExpiryDate().isBefore(Instant.now())) {
-            return ResponseEntity.status(HttpStatus.GONE)
-                    .body(Map.of("message", "Invitation expired"));
-        }
-
-        User user;
-        if (invite.getUserId() != null) {
-            user = userRepository.findById(invite.getUserId())
-                    .orElseThrow(() -> new NoSuchElementException("User not found"));
-        } else {
-            user = userRepository.findByEmail(invite.getEmail())
-                    .orElseThrow(() -> new NoSuchElementException("User not found"));
-        }
-
-        Optional<EmailVerificationToken> emailTokenOpt = emailVerificationTokenRepository.findByUserIdAndCode(user.getId(), code);
-        if (emailTokenOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Invalid verification code"));
-        }
-
-        EmailVerificationToken emailToken = emailTokenOpt.get();
-        if (emailToken.getExpiryDate() != null && emailToken.getExpiryDate().isBefore(Instant.now())) {
-            return ResponseEntity.status(HttpStatus.GONE)
-                    .body(Map.of("message", "Verification code expired"));
-        }
-
-        user.setEmailVerified(true);
-        userRepository.save(user);
-        emailVerificationTokenRepository.deleteByUserId(user.getId());
-        invite.setAccepted(true);
-        adminInvitationTokenRepository.save(invite);
-
-        return ResponseEntity.ok(Map.of("message", "Invitation accepted. You can now log in."));
     }
 }

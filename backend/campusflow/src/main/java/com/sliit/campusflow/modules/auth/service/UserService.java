@@ -1,11 +1,14 @@
 package com.sliit.campusflow.modules.auth.service;
 
 import com.sliit.campusflow.modules.auth.model.User;
+import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenRepository;
+import com.sliit.campusflow.modules.auth.repository.PasswordResetTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 @Service
@@ -13,6 +16,8 @@ import java.util.*;
 public class UserService {
 
     @Autowired private UserRepository userRepository;
+    @Autowired private EmailVerificationTokenRepository emailVerificationTokenRepository;
+    @Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     public List<User> getAllUsers() {
@@ -62,8 +67,15 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    @Transactional
     public void deleteUserByAdmin(UUID id) {
         User user = getUserById(id);
+        emailVerificationTokenRepository.deleteByUserId(user.getId());
+        passwordResetTokenRepository.deleteByUserId(user.getId());
+        // Force child-row deletions before parent delete to satisfy FK constraints.
+        emailVerificationTokenRepository.flush();
+        passwordResetTokenRepository.flush();
         userRepository.delete(user);
+        userRepository.flush();
     }
 }

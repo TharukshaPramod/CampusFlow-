@@ -5,6 +5,7 @@ import com.sliit.campusflow.modules.auth.model.User;
 import com.sliit.campusflow.modules.auth.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -71,7 +72,18 @@ public class UserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUserByAdmin(@PathVariable UUID id) {
-        userService.deleteUserByAdmin(id);
-        return ResponseEntity.ok(Map.of("message", "User deleted"));
+        try {
+            userService.deleteUserByAdmin(id);
+            return ResponseEntity.ok(Map.of("message", "User deleted"));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Cannot delete user due to linked records"));
+        } catch (Exception e) {
+            log.error("Failed to delete user {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to delete user"));
+        }
     }
 }
