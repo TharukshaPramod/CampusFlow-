@@ -165,3 +165,8 @@ class ResourceServiceTest {
         verify(resourceRepository, times(1)).deleteById(testId);
     }
 }
+
+
+/*Use this code to test unit in the terminal */
+/*cd D:\Projects\CampusFlow-\backend\campusflow
+./mvnw test -Dtest=ResourceServiceTest */
