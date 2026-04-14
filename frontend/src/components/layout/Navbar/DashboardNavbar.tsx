@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Menu, X, Bell } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 
 export const DashboardNavbar = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -53,7 +55,13 @@ export const DashboardNavbar = () => {
               {/* Dropdown Menu */}
               {profileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
-                  <button className="w-full px-4 py-3 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors text-sm">
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setProfileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors text-sm"
+                  >
                     <User className="w-4 h-4" />
                     Profile
                   </button>
@@ -102,6 +110,16 @@ export const DashboardNavbar = () => {
             )}
             <p className="text-sm font-medium text-slate-900">{user?.name}</p>
             <p className="text-xs text-slate-500 mb-2">{user?.email}</p>
+            <button
+              onClick={() => {
+                navigate('/profile');
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm"
+            >
+              <User className="w-4 h-4" />
+              Profile
+            </button>
             <button
               onClick={() => {
                 logout();

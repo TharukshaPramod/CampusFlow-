@@ -1,6 +1,7 @@
 package com.sliit.campusflow.modules.auth.controller;
 
 import com.sliit.campusflow.modules.auth.dto.request.AdminUpdateUserRequest;
+import com.sliit.campusflow.modules.auth.dto.request.UpdateMyProfileRequest;
 import com.sliit.campusflow.modules.auth.model.User;
 import com.sliit.campusflow.modules.auth.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,18 @@ public class UserController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<User> getCurrentUser(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(currentUser);
+    }
+
+    @PatchMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<User> updateCurrentUser(
+            @AuthenticationPrincipal User currentUser,
+            @RequestBody UpdateMyProfileRequest req) {
+        return ResponseEntity.ok(userService.updateCurrentUserProfile(
+                currentUser.getId(),
+                req.getName(),
+                req.getPicture()
+        ));
     }
 
     @GetMapping

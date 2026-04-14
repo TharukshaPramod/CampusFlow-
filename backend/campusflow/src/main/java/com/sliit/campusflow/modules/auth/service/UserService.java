@@ -67,6 +67,24 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    public User updateCurrentUserProfile(UUID id, String name, String picture) {
+        User user = getUserById(id);
+
+        if (name != null) {
+            String trimmedName = name.trim();
+            if (!trimmedName.isEmpty()) {
+                user.setName(trimmedName);
+            }
+        }
+
+        if (picture != null) {
+            String trimmedPicture = picture.trim();
+            user.setPicture(trimmedPicture.isEmpty() ? null : trimmedPicture);
+        }
+
+        return userRepository.save(user);
+    }
+
     @Transactional
     public void deleteUserByAdmin(UUID id) {
         User user = getUserById(id);

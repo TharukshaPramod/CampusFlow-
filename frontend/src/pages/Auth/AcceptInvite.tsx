@@ -101,11 +101,11 @@ export default function AcceptInvite() {
   };
 
   if (loading) {
-    return <div className="mx-auto mt-28 max-w-md px-4 text-slate-700">Loading invitation...</div>;
+    return <div className="mx-auto max-w-md px-4 pt-24 pb-28 text-slate-700 sm:pt-28 sm:pb-32">Loading invitation...</div>;
   }
 
   return (
-    <div className="mx-auto mt-28 w-full max-w-md px-4">
+    <div className="mx-auto w-full max-w-md px-4 pt-24 pb-28 sm:pt-28 sm:pb-32">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">Admin Invitation</h1>
         <p className="mt-2 text-sm text-slate-600">

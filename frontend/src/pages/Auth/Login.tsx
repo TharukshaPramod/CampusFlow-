@@ -161,7 +161,11 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 pt-28 pb-16">
+    <div
+      className={`relative min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 pt-28 ${
+        mode === 'verify' ? 'pb-24 sm:pb-28' : 'pb-16'
+      }`}
+    >
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-28 -left-28 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
