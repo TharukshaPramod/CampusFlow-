@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home/Home";
 import Resources from "./pages/Resources/Resources";
+import ResourceDetail from "./pages/Resources/ResourceDetail";
+import ResourceCreate from "./pages/Resources/ResourceCreate";
 import Bookings from "./pages/Bookings/Bookings";
 import Incidents from "./pages/Incidents/Incidents";
 import Notifications from "./pages/Notifications/Notifications";
@@ -16,9 +18,12 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
       </Route>
-      
+
       <Route element={<DashboardLayout />}>
         <Route path="/resources" element={<Resources />} />
+        <Route path="/resources/create" element={<ResourceCreate />} />
+        <Route path="/resources/:id" element={<ResourceDetail />} />
+        <Route path="/resources/:id/edit" element={<ResourceCreate />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/incidents" element={<Incidents />} />
         <Route path="/notifications" element={<Notifications />} />
