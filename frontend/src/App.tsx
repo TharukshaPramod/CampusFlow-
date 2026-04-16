@@ -10,6 +10,7 @@ import Dashboard from "./pages/Admin/Dashboard";
 import Login from "./pages/Auth/Login";
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import ResourceTypes from "./pages/Admin/ResourceTypes";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/incidents" element={<Incidents />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/admin" element={<Dashboard />} />
+        <Route path="/admin/resource-types" element={<ResourceTypes />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
