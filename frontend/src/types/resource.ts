@@ -13,7 +13,7 @@ export interface Resource {
   capacity?: number;
   status: ResourceStatus;
   resourceType?: ResourceType;
-  availableDays?: string[];
+  availableDays?: number[];
   availableFrom?: string;
   availableTo?: string;
   images?: string[];
@@ -35,7 +35,7 @@ export interface ResourceRequest {
   capacity?: number;
   status: ResourceStatus;
   resourceTypeId?: string;
-  availableDays?: string[];
+  availableDays?: number[];
   availableFrom?: string;
   availableTo?: string;
   images?: string[];

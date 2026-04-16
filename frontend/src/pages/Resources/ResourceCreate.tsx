@@ -2,10 +2,19 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { resourceService } from "../../services/api/resourceService";
 import { resourceTypeService } from "../../services/api/resourceTypeService";
-import type { ResourceRequest, ResourceStatus } from "../../types/resource";
+import { useAuth } from "../../hooks/useAuth";
+import type { ResourceRequest } from "../../types/resource";
 import type { ResourceType } from "../../types/ResourceType";
 
-const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const DAYS = [
+  { label: "MON", value: 1 },
+  { label: "TUE", value: 2 },
+  { label: "WED", value: 3 },
+  { label: "THU", value: 4 },
+  { label: "FRI", value: 5 },
+  { label: "SAT", value: 6 },
+  { label: "SUN", value: 7 },
+];
 
 const defaultForm: ResourceRequest = {
   name: "",
@@ -24,38 +33,57 @@ const defaultForm: ResourceRequest = {
 };
 
 export default function ResourceCreate() {
+  const { user } = useAuth();
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
+  const isAdmin = user?.roles?.includes("ADMIN");
 
   const [form, setForm] = useState<ResourceRequest>(defaultForm);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showTypeForm, setShowTypeForm] = useState(false);
+  const [typeForm, setTypeForm] = useState({
+    name: "",
+    category: "",
+    description: "",
+    icon: "",
+  });
+  const [typeSaving, setTypeSaving] = useState(false);
+  const [typeError, setTypeError] = useState<string | null>(null);
 
   useEffect(() => {
-    resourceTypeService.getAll().then(setResourceTypes);
+    resourceTypeService
+      .getAll()
+      .then(setResourceTypes)
+      .catch(() => setError("Failed to load resource types."));
   }, []);
 
   useEffect(() => {
     if (!isEditing || !id) return;
-    resourceService.getById(id).then((r) => {
-      setForm({
-        name: r.name,
-        code: r.code || "",
-        description: r.description || "",
-        location: r.location || "",
-        building: r.building || "",
-        floor: r.floor || "",
-        capacity: r.capacity || 1,
-        status: r.status,
-        resourceTypeId: r.resourceType?.id || "",
-        availableDays: r.availableDays || [],
-        availableFrom: r.availableFrom || "",
-        availableTo: r.availableTo || "",
-        requiresApproval: r.requiresApproval || false,
+    resourceService
+      .getById(id)
+      .then((r) => {
+        setForm({
+          name: r.name,
+          code: r.code || "",
+          description: r.description || "",
+          location: r.location || "",
+          building: r.building || "",
+          floor: r.floor || "",
+          capacity: r.capacity || 1,
+          status: r.status,
+          resourceTypeId: r.resourceType?.id || "",
+          availableDays: r.availableDays || [],
+          availableFrom: r.availableFrom || "",
+          availableTo: r.availableTo || "",
+          requiresApproval: r.requiresApproval || false,
+        });
+      })
+      .catch(() => {
+        setError("Failed to load resource details.");
       });
-    });
   }, [id]);
 
   const handleChange = (
@@ -72,7 +100,7 @@ export default function ResourceCreate() {
     }
   };
 
-  const handleDayToggle = (day: string) => {
+  const handleDayToggle = (day: number) => {
     setForm((f) => ({
       ...f,
       availableDays: f.availableDays?.includes(day)
@@ -83,6 +111,11 @@ export default function ResourceCreate() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.resourceTypeId) {
+      setError("Please select a resource type.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -90,15 +123,46 @@ export default function ResourceCreate() {
         await resourceService.update(id, form);
         navigate(`/resources/${id}`);
       } else {
-        const created = await resourceService.create(form);
-        navigate(`/resources/${created.id}`);
+        await resourceService.create(form);
+        navigate('/resources');
       }
-    } catch {
-      setError("Failed to save resource. Please check all fields.");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to save resource. Please check all fields.";
+      setError(message);
     } finally {
       setSaving(false);
     }
   };
+
+  const handleTypeCreate = async () => {
+    if (!typeForm.name.trim() || !typeForm.category.trim()) {
+      setTypeError("Type name and category are required.");
+      return;
+    }
+
+    setTypeSaving(true);
+    setTypeError(null);
+    try {
+      const created = await resourceTypeService.create(typeForm);
+      setResourceTypes((prev) => [...prev, created]);
+      setForm((prev) => ({ ...prev, resourceTypeId: created.id }));
+      setTypeForm({ name: "", category: "", description: "", icon: "" });
+      setShowTypeForm(false);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to save resource type.";
+      setTypeError(message);
+    } finally {
+      setTypeSaving(false);
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <section className="max-w-3xl mx-auto px-4 py-8">
+        <p className="text-red-500 text-sm">Only admins can add or edit resources.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="max-w-3xl mx-auto px-4 py-8">
@@ -151,13 +215,26 @@ export default function ResourceCreate() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Resource Type
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-slate-700">
+                Resource Type *
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTypeForm((prev) => !prev);
+                  setTypeError(null);
+                }}
+                className="text-xs border border-slate-200 text-slate-600 px-2 py-1 rounded-md hover:bg-slate-50 transition"
+              >
+                + Add Type
+              </button>
+            </div>
             <select
               name="resourceTypeId"
               value={form.resourceTypeId}
               onChange={handleChange}
+              required
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
             >
               <option value="">Select type...</option>
@@ -167,6 +244,65 @@ export default function ResourceCreate() {
                 </option>
               ))}
             </select>
+
+            {showTypeForm && (
+              <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
+                {typeError && <p className="text-red-500 text-xs mb-2">{typeError}</p>}
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    name="name"
+                    value={typeForm.name}
+                    onChange={(e) => setTypeForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Type name"
+                    required
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
+                  />
+                  <select
+                    name="category"
+                    value={typeForm.category}
+                    onChange={(e) => setTypeForm((f) => ({ ...f, category: e.target.value }))}
+                    required
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
+                  >
+                    <option value="">Select category...</option>
+                    <option value="ROOM">Room</option>
+                    <option value="EQUIPMENT">Equipment</option>
+                    <option value="FACILITY">Facility</option>
+                  </select>
+                  <input
+                    name="icon"
+                    value={typeForm.icon}
+                    onChange={(e) => setTypeForm((f) => ({ ...f, icon: e.target.value }))}
+                    placeholder="Icon"
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
+                  />
+                  <input
+                    name="description"
+                    value={typeForm.description}
+                    onChange={(e) => setTypeForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Description"
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
+                  />
+                  <div className="col-span-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTypeCreate}
+                      disabled={typeSaving}
+                      className="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-50 transition"
+                    >
+                      {typeSaving ? "Saving..." : "Save Type"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowTypeForm(false)}
+                      className="border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs hover:bg-white transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -249,16 +385,16 @@ export default function ResourceCreate() {
           <div className="flex flex-wrap gap-2">
             {DAYS.map((day) => (
               <button
-                key={day}
+                key={day.value}
                 type="button"
-                onClick={() => handleDayToggle(day)}
+                onClick={() => handleDayToggle(day.value)}
                 className={`px-3 py-1 rounded-full text-xs transition ${
-                  form.availableDays?.includes(day)
+                  form.availableDays?.includes(day.value)
                     ? "bg-slate-800 text-white"
                     : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                {day.slice(0, 3)}
+                {day.label}
               </button>
             ))}
           </div>

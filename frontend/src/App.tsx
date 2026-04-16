@@ -67,9 +67,7 @@ function App() {
       >
         <Route path="/dashboard" element={<Navigate to="/resources" replace />} />
         <Route path="/resources" element={<Resources />} />
-        <Route path="/resources/create" element={<ResourceCreate />} />
         <Route path="/resources/:id" element={<ResourceDetail />} />
-        <Route path="/resources/:id/edit" element={<ResourceCreate />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/incidents" element={<Incidents />} />
         <Route path="/notifications" element={<Notifications />} />
@@ -85,6 +83,8 @@ function App() {
       >
         <Route path="/admin" element={<Dashboard />} />
         <Route path="/admin/users" element={<Users />} />
+        <Route path="/resources/create" element={<ResourceCreate />} />
+        <Route path="/resources/:id/edit" element={<ResourceCreate />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

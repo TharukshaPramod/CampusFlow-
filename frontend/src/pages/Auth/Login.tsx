@@ -74,7 +74,7 @@ export default function Login() {
     const apiBase = configuredApiBase && configuredApiBase.trim().length > 0
       ? configuredApiBase
       : fallbackApiBase;
-    const apiOrigin = apiBase.replace(/\/api\/?$/, '');
+    const apiOrigin = apiBase.replace(/\/api(?:\/v1)?\/?$/, '');
 
     window.location.href = `${apiOrigin}/oauth2/authorization/google`;
   };
@@ -150,8 +150,7 @@ export default function Login() {
     } catch (err: any) {
       const message = err.response?.data?.message || 'Something went wrong';
       if (mode === 'login' && message === 'Invalid email or password') {
-        window.alert('wrong crendentials');
-        window.location.reload();
+        toast.error('Invalid email or password');
         return;
       }
       toast.error(message);

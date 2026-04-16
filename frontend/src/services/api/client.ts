@@ -21,7 +21,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error("API error", error);
-    if (error.response?.status === 401) {
+    const requestUrl = String(error?.config?.url || "");
+    const isAuthFlowRequest =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/verify-email') ||
+      requestUrl.includes('/auth/forgot-password') ||
+      requestUrl.includes('/auth/set-password');
+
+    if (error.response?.status === 401 && !isAuthFlowRequest) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       window.location.href = '/login';

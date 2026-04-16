@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { resourceService } from "../../services/api/resourceService";
 import { resourceTypeService } from "../../services/api/resourceTypeService";
+import { useAuth } from "../../hooks/useAuth";
 import type { Resource, ResourceFilters, ResourceStatus } from "../../types/resource";
 import type { ResourceType } from "../../types/ResourceType";
 
@@ -13,6 +14,9 @@ const statusColors: Record<ResourceStatus, string> = {
 };
 
 export default function Resources() {
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.includes("ADMIN");
+
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [filters, setFilters] = useState<ResourceFilters>({});
@@ -60,12 +64,14 @@ export default function Resources() {
             Browse and manage campus resources.
           </p>
         </div>
-        <Link
-          to="/resources/create"
-          className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition"
-        >
-          + Add Resource
-        </Link>
+        {isAdmin && (
+          <Link
+            to="/resources/create"
+            className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition"
+          >
+            + Add Resource
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -169,10 +175,9 @@ export default function Resources() {
       {/* Resource Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {resources.map((r) => (
-          <Link
+          <article
             key={r.id}
-            to={`/resources/${r.id}`}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition p-5 flex flex-col gap-2"
+            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col gap-2"
           >
             <div className="flex items-start justify-between">
               <h2 className="font-semibold text-slate-800 text-sm">{r.name}</h2>
@@ -208,7 +213,7 @@ export default function Resources() {
                 Requires Approval
               </span>
             )}
-          </Link>
+          </article>
         ))}
       </div>
     </section>
