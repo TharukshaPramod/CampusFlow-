@@ -24,9 +24,11 @@ export default function ResourceTypes() {
       setLoading(true);
       setError(null);
       const data = await resourceTypeService.getAll();
+      console.log("Fetched resource types:", data);
       setResourceTypes(data);
-    } catch {
-      setError("Failed to load resource types.");
+    } catch (err) {
+      console.error("Error fetching resource types:", err);
+      setError("Failed to load resource types. Check browser console for details.");
     } finally {
       setLoading(false);
     }

@@ -11,8 +11,8 @@ const api = axios.create({
 export const resourceTypeService = {
 
   getAll: async (): Promise<ResourceType[]> => {
-    const { data } = await api.get<ResourceType[]>('/resource-types');
-    return data;
+    const { data } = await api.get<{ content: ResourceType[] }>('/resource-types');
+    return data.content;
   },
 
   getById: async (id: string): Promise<ResourceType> => {
@@ -21,10 +21,10 @@ export const resourceTypeService = {
   },
 
   getByCategory: async (category: string): Promise<ResourceType[]> => {
-    const { data } = await api.get<ResourceType[]>('/resource-types', {
+    const { data } = await api.get<{ content: ResourceType[] }>('/resource-types', {
       params: { category },
     });
-    return data;
+    return data.content;
   },
 
   create: async (resourceType: ResourceTypeRequest): Promise<ResourceType> => {
