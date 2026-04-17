@@ -1,5 +1,6 @@
 package com.sliit.campusflow.modules.bookings.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sliit.campusflow.modules.bookings.model.BookingStatus;
 import lombok.Data;
 import lombok.Getter;
@@ -17,7 +18,11 @@ public class BookingResponse {
     private String resourceName;
     private UUID userId;
     private String userName;
+    
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startTime;
+    
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime endTime;
     private String purpose;
     private Integer expectedAttendees;
