@@ -21,11 +21,30 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByStatus(BookingStatus status);
 
     // Overlapping check constraint query to prevent scheduling conflicts
-    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Booking b WHERE b.resource.id = :resourceId AND b.status IN (:activeStatuses) AND ((b.startTime < :endTime AND b.endTime > :startTime))")
+    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Booking b WHERE b.resource.id = :resourceId AND b.status IN (:activeStatuses) AND (" +
+           "(:startTime >= b.startTime AND :startTime < b.endTime) OR " +
+           "(:endTime > b.startTime AND :endTime <= b.endTime) OR " +
+           "(:startTime <= b.startTime AND :endTime >= b.endTime))")
     boolean existsOverlappingBooking(
         @Param("resourceId") UUID resourceId,
         @Param("startTime") LocalDateTime startTime,
         @Param("endTime") LocalDateTime endTime,
         @Param("activeStatuses") List<BookingStatus> activeStatuses
     );
+
+    @Query("SELECT b FROM Booking b WHERE b.resource.id = :resourceId AND b.status IN (:activeStatuses) AND (" +
+           "(:startTime >= b.startTime AND :startTime < b.endTime) OR " +
+           "(:endTime > b.startTime AND :endTime <= b.endTime) OR " +
+           "(:startTime <= b.startTime AND :endTime >= b.endTime))")
+    List<Booking> findOverlappingBookings(
+        @Param("resourceId") UUID resourceId,
+        @Param("startTime") LocalDateTime startTime,
+        @Param("endTime") LocalDateTime endTime,
+        @Param("activeStatuses") List<BookingStatus> activeStatuses
+    );
+
+    // Bulk deletion methods
+    void deleteByUserId(UUID userId);
+    void deleteByStartTimeBefore(LocalDateTime time);
+    void deleteByUserIdAndStartTimeBefore(UUID userId, LocalDateTime time);
 }
