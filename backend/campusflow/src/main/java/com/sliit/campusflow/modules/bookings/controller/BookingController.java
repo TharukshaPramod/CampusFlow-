@@ -47,11 +47,20 @@ public class BookingController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Update booking status (Approve/Reject) - ADMIN ONLY")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update booking status (Approve/Reject via Admin, Cancel via User)")
     public ResponseEntity<BookingResponse> updateBookingStatus(
+            @AuthenticationPrincipal User user,
             @PathVariable UUID id,
             @RequestBody BookingStatusUpdate update) {
-        return ResponseEntity.ok(bookingService.updateBookingStatus(id, update));
+        return ResponseEntity.ok(bookingService.updateBookingStatus(id, update, user));
+    }
+
+    @DeleteMapping("/bulk")
+    @Operation(summary = "Delete bookings based on time range")
+    public ResponseEntity<Void> bulkDeleteBookings(
+            @AuthenticationPrincipal User user,
+            @RequestParam String timeRange) {
+        bookingService.bulkDeleteBookings(user, timeRange);
+        return ResponseEntity.ok().build();
     }
 }
