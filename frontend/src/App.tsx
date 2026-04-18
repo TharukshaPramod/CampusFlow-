@@ -8,6 +8,8 @@ import Incidents from "./pages/Incidents/Incidents";
 import Notifications from "./pages/Notifications/Notifications";
 import Dashboard from "./pages/Admin/Dashboard";
 import Users from "./pages/Admin/Users";
+import ResourceTypes from "./pages/Admin/ResourceTypes";
+import ResourceAnalytics from "./pages/Admin/ResourceAnalytics";
 import Profile from "./pages/Profile/Profile";
 import Login from "./pages/Auth/Login";
 import AuthCallback from "./pages/Auth/Callback";
@@ -83,6 +85,8 @@ function App() {
       >
         <Route path="/admin" element={<Dashboard />} />
         <Route path="/admin/users" element={<Users />} />
+        <Route path="/admin/resource-types" element={<ResourceTypes />} />
+        <Route path="/admin/resource-analytics" element={<ResourceAnalytics />} />
         <Route path="/resources/create" element={<ResourceCreate />} />
         <Route path="/resources/:id/edit" element={<ResourceCreate />} />
       </Route>
