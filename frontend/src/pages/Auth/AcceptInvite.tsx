@@ -11,9 +11,12 @@ type InviteMeta = {
   role: string;
 };
 
+const PASSWORD_MIN_LENGTH = 6;
+const PASSWORD_MAX_LENGTH = 8;
+
 const passwordRules = {
-  minLength: (v: string) => v.length >= 6,
-  maxLength: (v: string) => v.length <= 20,
+  minLength: (v: string) => v.length >= PASSWORD_MIN_LENGTH,
+  maxLength: (v: string) => v.length <= PASSWORD_MAX_LENGTH,
   uppercase: (v: string) => /[A-Z]/.test(v),
   number: (v: string) => /\d/.test(v),
   symbol: (v: string) => /[@#$!%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(v),
@@ -120,10 +123,12 @@ export default function AcceptInvite() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={PASSWORD_MAX_LENGTH}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none ring-primary/20 focus:border-primary focus:ring-2"
               />
               <div className="mt-2 text-xs text-slate-500">
-                <p>{passwordRules.minLength(password) ? "[x]" : "[ ]"} At least 6 characters</p>
+                <p>{passwordRules.minLength(password) ? "[x]" : "[ ]"} {PASSWORD_MIN_LENGTH}-{PASSWORD_MAX_LENGTH} characters</p>
                 <p>{passwordRules.uppercase(password) ? "[x]" : "[ ]"} One uppercase letter</p>
                 <p>{passwordRules.number(password) ? "[x]" : "[ ]"} One number</p>
                 <p>{passwordRules.symbol(password) ? "[x]" : "[ ]"} One symbol</p>

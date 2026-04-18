@@ -1,8 +1,35 @@
-import { motion } from 'framer-motion';
-import { Building2, CalendarCheck, ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Building2, CalendarCheck, ShieldAlert, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function Home() {
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  useEffect(() => {
+    const shouldCelebrate = sessionStorage.getItem('showLoginCelebration') === '1';
+    if (!shouldCelebrate) {
+      return;
+    }
+
+    setShowCelebration(true);
+    sessionStorage.removeItem('showLoginCelebration');
+  }, []);
+
+  useEffect(() => {
+    if (!showCelebration) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowCelebration(false);
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [showCelebration]);
+
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 }
@@ -39,6 +66,30 @@ function Home() {
 
   return (
     <div className="w-full bg-slate-50">
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, y: -24, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.96 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="fixed right-4 top-24 z-50 w-[min(92vw,22rem)]"
+          >
+            <div className="rounded-2xl border border-emerald-200/70 bg-gradient-to-r from-emerald-500 to-teal-500 p-[1px] shadow-2xl shadow-emerald-500/25">
+              <div className="flex items-start gap-3 rounded-2xl bg-white/95 px-4 py-3 backdrop-blur">
+                <div className="mt-0.5 rounded-full bg-emerald-100 p-2 text-emerald-600">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Signed in successfully</p>
+                  <p className="text-xs text-slate-600">Welcome to CampusFlow. Ready to get started.</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100">
         {/* Background decorative elements */}

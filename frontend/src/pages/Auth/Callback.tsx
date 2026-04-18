@@ -37,6 +37,7 @@ export default function AuthCallback() {
       if (token) {
         try {
           login(token);
+          sessionStorage.setItem('showLoginCelebration', '1');
           toast.success('Welcome! Signed in with Google');
           setTimeout(() => {
             navigate('/', { replace: true });

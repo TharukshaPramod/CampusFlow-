@@ -7,13 +7,15 @@ import api from '../../services/api/client';
 
 type Mode = 'login' | 'register' | 'verify';
 
+const REGISTER_PASSWORD_MIN_LENGTH = 6;
+const REGISTER_PASSWORD_MAX_LENGTH = 8;
+
 const getRedirectPathFromToken = (jwtToken: string) => {
   try {
-    const payload = JSON.parse(atob(jwtToken.split('.')[1]));
-    const roles = (payload.roles || []).map((r: string) => r.replace('ROLE_', ''));
-    return roles.includes('ADMIN') ? '/' : '/dashboard';
+    JSON.parse(atob(jwtToken.split('.')[1]));
+    return '/';
   } catch {
-    return '/dashboard';
+    return '/';
   }
 };
 
@@ -32,6 +34,8 @@ export default function Login() {
   });
   const [pendingEmail, setPendingEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -40,7 +44,7 @@ export default function Login() {
     confirmPassword: '',
   });
 
-  if (user) return <Navigate to={user.roles?.includes('ADMIN') ? '/' : '/dashboard'} replace />;
+  if (user) return <Navigate to="/" replace />;
 
   useEffect(() => {
     const errorCode = searchParams.get('error');
@@ -83,6 +87,8 @@ export default function Login() {
     setMode(newMode);
     setForm({ name: '', email: '', password: '', confirmPassword: '' });
     setTouched({ name: false, email: false, password: false, confirmPassword: false });
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     if (newMode !== 'verify') {
       setPendingEmail('');
       setVerificationCode('');
@@ -94,7 +100,9 @@ export default function Login() {
   const nameIsValid = nameValue.length > 0 && /^[A-Za-z\s]+$/.test(nameValue);
   const emailIsValid = emailValue.length > 0 && /^[^\s@]+@gmail\.com$/i.test(emailValue);
   const passwordRules = {
-    length: form.password.length >= 6 && form.password.length <= 8,
+    length:
+      form.password.length >= REGISTER_PASSWORD_MIN_LENGTH &&
+      form.password.length <= REGISTER_PASSWORD_MAX_LENGTH,
     uppercase: /[A-Z]/.test(form.password),
     number: /\d/.test(form.password),
     symbol: /[@#$]/.test(form.password),
@@ -144,13 +152,14 @@ export default function Login() {
           password: form.password,
         });
         login(res.data.token);
+        sessionStorage.setItem('showLoginCelebration', '1');
         toast.success('Welcome back!');
         navigate(getRedirectPathFromToken(res.data.token), { replace: true });
       }
     } catch (err: any) {
       const message = err.response?.data?.message || 'Something went wrong';
       if (mode === 'login' && message === 'Invalid email or password') {
-        toast.error('Invalid email or password');
+        window.alert('Incorrect Username or Password');
         return;
       }
       toast.error(message);
@@ -320,19 +329,30 @@ export default function Login() {
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Password
                     </label>
-                    <input
-                      type="password"
-                      placeholder="Enter your password"
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
-                      required
-                    />
+                    <div className="relative mt-2">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-20 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        value={form.password}
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+                        minLength={mode === 'register' ? REGISTER_PASSWORD_MIN_LENGTH : undefined}
+                        maxLength={mode === 'register' ? REGISTER_PASSWORD_MAX_LENGTH : undefined}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700"
+                      >
+                        {showPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
                     {mode === 'register' && (
                       <div className="mt-3 space-y-1 text-xs">
                         <p className={`font-semibold ${passwordRules.length ? 'text-emerald-600' : 'text-slate-500'}`}>
-                          [{passwordRules.length ? 'x' : ' '}] 6-8 characters
+                          [{passwordRules.length ? 'x' : ' '}] {REGISTER_PASSWORD_MIN_LENGTH}-{REGISTER_PASSWORD_MAX_LENGTH} characters
                         </p>
                         <p className={`font-semibold ${passwordRules.uppercase ? 'text-emerald-600' : 'text-slate-500'}`}>
                           [{passwordRules.uppercase ? 'x' : ' '}] At least one uppercase letter
@@ -360,15 +380,26 @@ export default function Login() {
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Confirm password
                     </label>
-                    <input
-                      type="password"
-                      placeholder="Repeat your password"
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      value={form.confirmPassword}
-                      onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                      onBlur={() => setTouched((prev) => ({ ...prev, confirmPassword: true }))}
-                      required
-                    />
+                    <div className="relative mt-2">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Repeat your password"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-20 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        onBlur={() => setTouched((prev) => ({ ...prev, confirmPassword: true }))}
+                        minLength={REGISTER_PASSWORD_MIN_LENGTH}
+                        maxLength={REGISTER_PASSWORD_MAX_LENGTH}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700"
+                      >
+                        {showConfirmPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
                     {touched.confirmPassword && form.confirmPassword.length > 0 && !confirmMatches && (
                       <p className="mt-2 text-xs font-semibold text-red-500">Passwords do not match</p>
                     )}
