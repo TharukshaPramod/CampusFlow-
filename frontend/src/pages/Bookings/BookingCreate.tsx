@@ -44,8 +44,8 @@
       
 //       await bookingService.createBooking({
 //          resourceId,
-//          startTime: new Date(startTime).toISOString(),
-//          endTime: new Date(endTime).toISOString(),
+//          startTime: startTime,
+//          endTime: endTime,
 //          purpose,
 //          expectedAttendees
 //       });
@@ -222,8 +222,8 @@ function BookingCreate() {
 
       await bookingService.createBooking({
         resourceId,
-        startTime: new Date(startTime).toISOString(),
-        endTime: new Date(endTime).toISOString(),
+        startTime: startTime.length === 16 ? `${startTime}:00` : startTime,
+        endTime: endTime.length === 16 ? `${endTime}:00` : endTime,
         purpose,
         expectedAttendees,
       });
@@ -239,7 +239,7 @@ function BookingCreate() {
 
       if (status === 409) {
         setError(
-          "⚠️ Time slot conflict: This resource is already booked for that period. Please choose a different time."
+          `⚠️ Time slot conflict: ${msg}`
         );
       } else if (status === 400) {
         setError(`⚠️ ${msg}`);
@@ -261,7 +261,18 @@ function BookingCreate() {
       <div className="bg-white p-8 rounded-lg shadow border border-slate-200">
         {error && (
           <div className="p-4 bg-red-50 text-red-600 rounded-md border border-red-200 mb-6 font-medium text-sm">
-            {error}
+            {error.includes("|||") ? (
+              <div className="space-y-1 block">
+                <span>{error.split("|||")[0]}</span>
+                <ul className="list-disc list-inside ml-2 mt-1">
+                  {error.split("|||").slice(1).map((conflictLine, i) => (
+                    <li key={i}>{conflictLine}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              error
+            )}
           </div>
         )}
 
