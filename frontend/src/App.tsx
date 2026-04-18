@@ -48,6 +48,8 @@ const RequireAdmin = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+import BookingCreate from "./pages/Bookings/BookingCreate";
+
 function App() {
   return (
     <Routes>
@@ -69,6 +71,7 @@ function App() {
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:id" element={<ResourceDetail />} />
         <Route path="/bookings" element={<Bookings />} />
+        <Route path="/bookings/new" element={<BookingCreate />} />
         <Route path="/incidents" element={<Incidents />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
