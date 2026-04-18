@@ -27,6 +27,7 @@ apiClient.interceptors.response.use(
       requestUrl.includes('/auth/register') ||
       requestUrl.includes('/auth/verify-email') ||
       requestUrl.includes('/auth/forgot-password') ||
+      requestUrl.includes('/auth/verify-token') ||
       requestUrl.includes('/auth/set-password');
 
     if (error.response?.status === 401 && !isAuthFlowRequest) {

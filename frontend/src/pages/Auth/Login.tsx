@@ -36,6 +36,9 @@ export default function Login() {
   const [verificationCode, setVerificationCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -110,6 +113,37 @@ export default function Login() {
   const passwordIsValid = Object.values(passwordRules).every(Boolean);
   const confirmMatches = form.password.length > 0 && form.password === form.confirmPassword;
   const verificationCodeIsValid = /^\d{6}$/.test(verificationCode.trim());
+
+  const openForgotPasswordModal = () => {
+    setForgotPasswordEmail(form.email.trim());
+    setShowForgotPasswordModal(true);
+  };
+
+  const closeForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false);
+    setForgotPasswordLoading(false);
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = forgotPasswordEmail.trim();
+
+    if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+      toast.error('Please enter a valid Gmail address');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      await api.post('/auth/forgot-password', { email });
+      toast.success('Password reset link sent to your email');
+      closeForgotPasswordModal();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to send reset link');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,9 +474,13 @@ export default function Login() {
                       Remember me
                     </label>
                     {mode === 'login' && (
-                      <a href="/forgot-password" className="font-semibold text-primary hover:text-primary-dark">
+                      <button
+                        type="button"
+                        onClick={openForgotPasswordModal}
+                        className="font-semibold text-primary hover:text-primary-dark"
+                      >
                         Forgot password?
-                      </a>
+                      </button>
                     )}
                   </div>
                 )}
@@ -505,6 +543,63 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showForgotPasswordModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+              <h4 className="text-lg font-bold text-slate-900">Reset your password</h4>
+              <p className="mt-1 text-sm text-slate-600">
+                Enter your Gmail address and we will send you a password reset link.
+              </p>
+
+              <form onSubmit={handleForgotPasswordSubmit} className="mt-5 space-y-4">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Gmail address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="name@gmail.com"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeForgotPasswordModal}
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotPasswordLoading}
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {forgotPasswordLoading ? 'Sending...' : 'Send link'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
