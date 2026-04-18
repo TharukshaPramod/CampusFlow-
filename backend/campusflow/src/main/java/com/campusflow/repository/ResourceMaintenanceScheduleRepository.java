@@ -19,12 +19,12 @@ public interface ResourceMaintenanceScheduleRepository extends JpaRepository<Res
 
     // Check if a resource has active maintenance on a given date
     @Query("SELECT m FROM ResourceMaintenanceSchedule m WHERE " +
-           "m.resource.id = :resourceId AND " +
-           "m.status NOT IN ('COMPLETED', 'CANCELLED') AND " +
-           "m.startDate <= :date AND " +
-           "(m.endDate IS NULL OR m.endDate >= :date)")
+       "(:resourceId IS NULL OR m.resource.id = :resourceId) AND " +
+       "m.status NOT IN ('COMPLETED', 'CANCELLED') AND " +
+       "m.startDate <= :date AND " +
+       "(m.endDate IS NULL OR m.endDate >= :date)")
     List<ResourceMaintenanceSchedule> findActiveMaintenanceForResource(
-            @Param("resourceId") UUID resourceId,
-            @Param("date") LocalDate date
+        @Param("resourceId") UUID resourceId,
+        @Param("date") LocalDate date
     );
 }
