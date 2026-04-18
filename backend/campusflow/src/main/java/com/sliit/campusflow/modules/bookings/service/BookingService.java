@@ -37,15 +37,21 @@ public class BookingService {
         }
 
         // Validate no overlap
-        boolean existsConflict = bookingRepository.existsOverlappingBooking(
+        List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(
                 request.getResourceId(),
                 request.getStartTime(),
                 request.getEndTime(),
                 Arrays.asList(BookingStatus.PENDING, BookingStatus.APPROVED)
         );
 
-        if (existsConflict) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource is already booked during this time range");
+        if (!overlappingBookings.isEmpty()) {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm a");
+            java.util.List<String> conflictDetailsList = new java.util.ArrayList<>();
+            for (Booking conflict : overlappingBookings) {
+                conflictDetailsList.add(conflict.getStartTime().format(formatter) + " to " + conflict.getEndTime().format(formatter));
+            }
+            String allConflicts = String.join("|||", conflictDetailsList);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource is already booked. Conflicting bookings: |||" + allConflicts);
         }
 
         User user = userRepository.findById(userId)
@@ -86,9 +92,23 @@ public class BookingService {
         return bookingMapper.toResponseList(bookingRepository.findByUserId(userId));
     }
 
-    public BookingResponse updateBookingStatus(UUID bookingId, BookingStatusUpdate update) {
+    public BookingResponse updateBookingStatus(UUID bookingId, BookingStatusUpdate update, User currentUser) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        boolean isAdmin = currentUser.getRoles().contains("ADMIN");
+
+        if (update.getStatus() == BookingStatus.CANCELLED) {
+            // Users can only cancel their own bookings, admins can cancel any
+            if (!isAdmin && !booking.getUser().getId().equals(currentUser.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only cancel your own bookings");
+            }
+        } else {
+            // Only admins can approve or reject
+            if (!isAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only administrators can approve or reject bookings");
+            }
+        }
 
         booking.setStatus(update.getStatus());
 
@@ -98,5 +118,39 @@ public class BookingService {
 
         booking = bookingRepository.save(booking);
         return bookingMapper.toResponse(booking);
+    }
+
+    public void bulkDeleteBookings(User currentUser, String timeRange) {
+        boolean isAdmin = currentUser.getRoles().contains("ADMIN");
+        java.time.LocalDateTime threshold = null;
+        
+        switch (timeRange.toLowerCase()) {
+            case "yesterday":
+                threshold = java.time.LocalDateTime.now().minusDays(1);
+                break;
+            case "week":
+                threshold = java.time.LocalDateTime.now().minusWeeks(1);
+                break;
+            case "month":
+                threshold = java.time.LocalDateTime.now().minusMonths(1);
+                break;
+            case "all":
+            default:
+                break;
+        }
+
+        if (isAdmin) {
+            if ("all".equalsIgnoreCase(timeRange)) {
+                bookingRepository.deleteAll();
+            } else if (threshold != null) {
+                bookingRepository.deleteByStartTimeBefore(threshold);
+            }
+        } else {
+            if ("all".equalsIgnoreCase(timeRange)) {
+                bookingRepository.deleteByUserId(currentUser.getId());
+            } else if (threshold != null) {
+                bookingRepository.deleteByUserIdAndStartTimeBefore(currentUser.getId(), threshold);
+            }
+        }
     }
 }
