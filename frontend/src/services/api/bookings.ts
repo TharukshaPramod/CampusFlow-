@@ -15,5 +15,9 @@ export const bookingService = {
   updateBookingStatus: async (id: string, update: BookingStatusUpdate): Promise<Booking> => {
     const { data } = await apiClient.patch<Booking>(`/v1/bookings/${id}/status`, update);
     return data;
+  },
+
+  deleteBookings: async (timeRange: string): Promise<void> => {
+    await apiClient.delete(`/v1/bookings/bulk`, { params: { timeRange } });
   }
 };
