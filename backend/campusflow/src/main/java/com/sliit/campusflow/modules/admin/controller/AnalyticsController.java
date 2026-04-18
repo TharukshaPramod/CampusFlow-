@@ -1,7 +1,7 @@
-package com.campusflow.controller;
+package com.sliit.campusflow.modules.admin.controller;
 
-import com.campusflow.dto.ResourceAnalyticsResponse;
-import com.campusflow.service.ResourceAnalyticsService;
+import com.sliit.campusflow.modules.admin.dto.ResourceAnalyticsResponse;
+import com.sliit.campusflow.modules.admin.service.ResourceAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/analytics")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "${app.cors.origins}")
-public class ResourceAnalyticsController {
+@CrossOrigin(origins = "*", maxAge = 3600)
+public class AnalyticsController {
 
     private final ResourceAnalyticsService analyticsService;
 
