@@ -9,9 +9,11 @@ const userLinks = [
 ];
 
 const adminLinks = [
-  { to: "/", label: "Home" },
-  { to: "/admin", label: "Admin Dashboard" },
-  { to: "/admin/users", label: "User Management" }
+  { to: "/",                        label: "Home" },
+  { to: "/admin",                   label: "Admin Dashboard" },
+  { to: "/admin/resource-analytics", label: "Resource Analytics" },
+  { to: "/admin/resource-types",    label: "Resource Types" },
+  { to: "/admin/users",             label: "User Management" },
 ];
 
 export function Sidebar() {
