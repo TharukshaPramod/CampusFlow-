@@ -24,7 +24,13 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const normalizeRoles = (raw: unknown): string[] => {
   if (Array.isArray(raw)) {
     return raw
-      .map((value) => String(value).replace("ROLE_", "").trim())
+      .map((value) => {
+        if (typeof value === "string") return value.replace("ROLE_", "").trim();
+        if (value && typeof value === "object" && "name" in value) {
+          return String((value as any).name).replace("ROLE_", "").trim();
+        }
+        return "";
+      })
       .filter(Boolean);
   }
 

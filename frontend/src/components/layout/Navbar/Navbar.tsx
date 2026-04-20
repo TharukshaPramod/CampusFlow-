@@ -38,7 +38,7 @@ export const Navbar = () => {
   const dashboardPath = user
     ? user.roles?.includes('ADMIN')
       ? '/admin'
-      : '/dashboard'
+      : '/resources'
     : '/login';
 
   return (

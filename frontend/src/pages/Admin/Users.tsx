@@ -8,7 +8,7 @@ type AdminUser = {
   id: string;
   name: string;
   email: string;
-  roles: string;
+  roles: string | any[];
   active: boolean;
   lastLogin?: string | number | null;
 };
@@ -68,14 +68,21 @@ const formatLastLogin = (value?: string | number | null) => {
   return years === 1 ? "a year ago" : `${years} years ago`;
 };
 
-const getPrimaryRole = (roles: string) => {
-  const roleSet = roles
-    .split(",")
+const getPrimaryRole = (roles: string | any[]) => {
+  if (!roles) return "USER";
+
+  const roleArray = Array.isArray(roles)
+    ? roles.map((r) => (typeof r === "string" ? r : r?.name || ""))
+    : typeof roles === "string"
+    ? roles.split(",")
+    : [];
+
+  const roleSet = roleArray
     .map((r) => r.trim().toUpperCase())
     .filter(Boolean);
 
-  if (roleSet.includes("ADMIN")) return "ADMIN";
-  if (roleSet.includes("TECHNICIAN")) return "TECHNICIAN";
+  if (roleSet.includes("ADMIN") || roleSet.includes("ROLE_ADMIN")) return "ADMIN";
+  if (roleSet.includes("TECHNICIAN") || roleSet.includes("ROLE_TECHNICIAN")) return "TECHNICIAN";
   return "USER";
 };
 

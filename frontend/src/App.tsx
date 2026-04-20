@@ -67,7 +67,7 @@ function App() {
       <Route
         element={
           <RequireAuth>
-            <DashboardLayout />
+            <PublicLayout />
           </RequireAuth>
         }
       >
@@ -92,6 +92,15 @@ function App() {
         <Route path="/admin/users" element={<Users />} />
         <Route path="/admin/resource-types" element={<ResourceTypes />} />
         <Route path="/admin/resource-analytics" element={<ResourceAnalytics />} />
+      </Route>
+
+      <Route
+        element={
+          <RequireAdmin>
+            <PublicLayout />
+          </RequireAdmin>
+        }
+      >
         <Route path="/resources/create" element={<ResourceCreate />} />
         <Route path="/resources/:id/edit" element={<ResourceCreate />} />
       </Route>

@@ -4,7 +4,7 @@ spring:
   
   # Database Configuration with Supabase
   datasource:
-    url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
+    url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&prepareThreshold=0&preparedStatementCacheQueries=0&preferQueryMode=simple
     username: postgres.utjdyyhbhzqogpazbqtb
     password: Tharu@21247
     driver-class-name: org.postgresql.Driver
@@ -18,6 +18,10 @@ spring:
       connection-test-query: SELECT 1
       validation-timeout: 5000
       leak-detection-threshold: 60000
+      data-source-properties:
+        prepareThreshold: 0
+        preparedStatementCacheQueries: 0
+        preferQueryMode: simple
 
   jpa:
     hibernate:
@@ -112,7 +116,7 @@ app:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
   jwt:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-    expiration: 900000
+    expiration: 86400000
     issuer: campusflow
     access-token-ttl: 15m
     refresh-token-ttl: 7d

@@ -43,6 +43,8 @@ export default function ResourceCreate() {
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [selectedImageName, setSelectedImageName] = useState<string>("");
   const [showTypeForm, setShowTypeForm] = useState(false);
   const [typeForm, setTypeForm] = useState({
     name: "",
@@ -79,7 +81,11 @@ export default function ResourceCreate() {
           availableFrom: r.availableFrom || "",
           availableTo: r.availableTo || "",
           requiresApproval: r.requiresApproval || false,
+          images: r.images || [],
         });
+        if (r.images && r.images.length > 0) {
+          setImagePreview(r.images[0]);
+        }
       })
       .catch(() => {
         setError("Failed to load resource details.");
@@ -132,6 +138,29 @@ export default function ResourceCreate() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose a valid image file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const previewDataUrl = String(reader.result || "");
+      setImagePreview(previewDataUrl);
+      setSelectedImageName(file.name);
+      setForm((prev) => ({
+        ...prev,
+        images: [previewDataUrl],
+      }));
+      setError(null);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleTypeCreate = async () => {
@@ -439,6 +468,36 @@ export default function ResourceCreate() {
             rows={3}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
           />
+        </div>
+
+        {/* Image Upload */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Resource Image
+          </label>
+          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-lg hover:bg-slate-50 transition relative">
+            <div className="space-y-1 text-center">
+              {imagePreview ? (
+                <div className="mb-4">
+                  <img src={imagePreview} alt="Preview" className="mx-auto h-48 w-auto rounded object-cover shadow-sm" />
+                </div>
+              ) : (
+                <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+              <div className="flex text-sm text-slate-600 justify-center">
+                <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary-dark focus-within:outline-none">
+                  <span>Upload a file</span>
+                  <input type="file" className="sr-only" accept="image/*" onChange={handleImageUpload} />
+                </label>
+                <p className="pl-1">or drag and drop</p>
+              </div>
+              <p className="text-xs text-slate-500">
+                {selectedImageName ? selectedImageName : "PNG, JPG, GIF up to 5MB"}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Requires Approval */}

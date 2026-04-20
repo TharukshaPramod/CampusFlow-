@@ -27,7 +27,7 @@ public class AdminSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            createAdminIfNotExists("System Admin", "shivantha008@gmail.com", "Admin@20");
+            createAdminIfNotExists("System Admin", "tharuksha@gmail.com", "Admin@20");
             log.info("✅ AdminSeeder completed successfully");
         } catch (Exception e) {
             log.error("❌ AdminSeeder failed: {}", e.getMessage());

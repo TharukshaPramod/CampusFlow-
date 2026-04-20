@@ -16,8 +16,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -116,13 +114,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     }
 
     private boolean hasRestrictedRole(User user) {
-        Set<String> normalizedRoles = user.getRoleSet().stream()
-                .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
-                .map(String::toUpperCase)
-                .collect(Collectors.toSet());
-
-        return normalizedRoles.contains("ADMIN")
-                || normalizedRoles.contains("TECHNICIAN")
-                || normalizedRoles.contains("MANAGER");
+        // Disabled: Allow Admins to login via Google
+        return false;
     }
 }

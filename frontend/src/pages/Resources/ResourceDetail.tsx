@@ -58,12 +58,28 @@ export default function ResourceDetail() {
       </Link>
 
       {/* Header */}
+      {resource.images && resource.images.length > 0 && (
+        <div className="w-full h-64 md:h-80 rounded-2xl overflow-hidden mb-6 shadow-md relative">
+          <img src={resource.images[0]} alt={resource.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+          <div className="absolute bottom-6 left-6 text-white">
+            <h1 className="text-3xl font-bold">{resource.name}</h1>
+            <p className="opacity-90 flex items-center gap-2 mt-1">
+               <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 002.273 1.765 11.842 11.842 0 00.976.538l.061.024zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+               {[resource.building, resource.floor, resource.location].filter(Boolean).join(", ")}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-xl font-semibold text-slate-800">
-              {resource.name}
-            </h1>
+            {!(resource.images && resource.images.length > 0) && (
+               <h1 className="text-xl font-semibold text-slate-800">
+                 {resource.name}
+               </h1>
+            )}
             {resource.code && (
               <p className="text-xs text-slate-400 mt-1">Code: {resource.code}</p>
             )}
