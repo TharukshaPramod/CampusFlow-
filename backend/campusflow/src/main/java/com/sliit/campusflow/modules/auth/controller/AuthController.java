@@ -5,6 +5,7 @@ import com.sliit.campusflow.modules.auth.dto.request.RegisterRequest;
 import com.sliit.campusflow.modules.auth.model.AdminInvitationToken;
 import com.sliit.campusflow.modules.auth.model.EmailVerificationToken;
 import com.sliit.campusflow.modules.auth.model.PasswordResetToken;
+import com.sliit.campusflow.modules.auth.model.Role;
 import com.sliit.campusflow.modules.auth.model.User;
 import com.sliit.campusflow.modules.auth.repository.AdminInvitationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenRepository;
@@ -27,6 +28,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/auth")
 @Slf4j
+@SuppressWarnings("null")
 public class AuthController {
 
     @Autowired private UserRepository userRepository;
@@ -60,7 +62,13 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setAuthProvider("LOCAL");
         user.setActive(true);
-        var role = roleRepository.findByName("ROLE_USER").orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular user").build()));
+        Role role;
+        var roleOpt = roleRepository.findByName("ROLE_USER");
+        if (roleOpt.isPresent()) {
+            role = roleOpt.get();
+        } else {
+            role = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular user").build());
+        }
         user.getRoles().add(role);
 
         userRepository.save(user);
@@ -351,7 +359,13 @@ public class AuthController {
             roleName = "ROLE_" + roleName;
         }
         var finalRoleName = roleName;
-        var role = roleRepository.findByName(finalRoleName).orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(finalRoleName).build()));
+        Role role;
+        var roleOpt = roleRepository.findByName(finalRoleName);
+        if (roleOpt.isPresent()) {
+            role = roleOpt.get();
+        } else {
+            role = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(finalRoleName).build());
+        }
         user.getRoles().add(role);
         user.setActive(true);
         user.setEmailVerified(false);
@@ -400,7 +414,7 @@ public class AuthController {
             }
 
             Optional<User> userOpt = invite.getUserId() != null
-                    ? userRepository.findById(invite.getUserId())
+                    ? userRepository.findById(Objects.requireNonNull(invite.getUserId()))
                     : userRepository.findByEmail(invite.getEmail());
 
             if (userOpt.isEmpty()) {

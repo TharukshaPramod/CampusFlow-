@@ -54,10 +54,10 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource is already booked. Conflicting bookings: |||" + allConflicts);
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(java.util.Objects.requireNonNull(userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        Resource resource = resourceRepository.findById(request.getResourceId())
+        Resource resource = resourceRepository.findById(java.util.Objects.requireNonNull(request.getResourceId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found"));
 
         if (!"ACTIVE".equalsIgnoreCase(resource.getStatus())) {
@@ -93,7 +93,7 @@ public class BookingService {
     }
 
     public BookingResponse updateBookingStatus(UUID bookingId, BookingStatusUpdate update, User currentUser) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository.findById(java.util.Objects.requireNonNull(bookingId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
         boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"));

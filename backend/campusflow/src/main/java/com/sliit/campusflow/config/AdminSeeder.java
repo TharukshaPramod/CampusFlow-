@@ -1,5 +1,6 @@
 package com.sliit.campusflow.config;
 
+import com.sliit.campusflow.modules.auth.model.Role;
 import com.sliit.campusflow.modules.auth.model.User;
 import com.sliit.campusflow.modules.auth.repository.RoleRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
+@SuppressWarnings("null")
 public class AdminSeeder implements CommandLineRunner {
 
     @Autowired
@@ -39,7 +41,13 @@ public class AdminSeeder implements CommandLineRunner {
             
             if (existingUser.isPresent()) {
                 User user = existingUser.get();
-                var adminRole = roleRepository.findByName("ROLE_ADMIN").orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_ADMIN").description("System Admin").build()));
+                Role adminRole;
+                var adminRoleOpt = roleRepository.findByName("ROLE_ADMIN");
+                if (adminRoleOpt.isPresent()) {
+                    adminRole = adminRoleOpt.get();
+                } else {
+                    adminRole = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_ADMIN").description("System Admin").build());
+                }
                 user.getRoles().clear();
                 user.getRoles().add(adminRole);
                 user.setName(name);
@@ -59,7 +67,13 @@ public class AdminSeeder implements CommandLineRunner {
             admin.setAuthProvider("LOCAL");
             admin.setActive(true);
             admin.setEmailVerified(true);
-            var adminRole = roleRepository.findByName("ROLE_ADMIN").orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_ADMIN").description("System Admin").build()));
+            Role adminRole;
+            var adminRoleOpt2 = roleRepository.findByName("ROLE_ADMIN");
+            if (adminRoleOpt2.isPresent()) {
+                adminRole = adminRoleOpt2.get();
+            } else {
+                adminRole = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_ADMIN").description("System Admin").build());
+            }
             admin.getRoles().add(adminRole);
             
             userRepository.save(admin);

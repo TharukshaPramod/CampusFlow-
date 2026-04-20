@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
+@SuppressWarnings("null")
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     @Autowired private UserRepository userRepository;
@@ -72,9 +73,13 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                         .roles(new HashSet<>())
                         .build();
 
-                Role userRole = roleRepository.findByName("ROLE_USER").orElseGet(() -> 
-                    roleRepository.save(Role.builder().name("ROLE_USER").description("Regular User").build())
-                );
+                Role userRole;
+                var roleOpt = roleRepository.findByName("ROLE_USER");
+                if (roleOpt.isPresent()) {
+                    userRole = roleOpt.get();
+                } else {
+                    userRole = roleRepository.save(Role.builder().name("ROLE_USER").description("Regular User").build());
+                }
                 user.getRoles().add(userRole);
             }
 

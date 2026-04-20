@@ -14,6 +14,7 @@ import java.util.*;
 
 @Service
 @Slf4j
+@SuppressWarnings("null")
 public class UserService {
 
     @Autowired private UserRepository userRepository;
@@ -27,7 +28,7 @@ public class UserService {
     }
 
     public User getUserById(UUID id) {
-        return userRepository.findById(id)
+        return userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
     }
 
@@ -36,7 +37,13 @@ public class UserService {
         user.getRoles().clear();
         
         if (roles == null || roles.isEmpty()) {
-            var role = roleRepository.findByName("ROLE_USER").orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular User").build()));
+            com.sliit.campusflow.modules.auth.model.Role role;
+            var roleOpt = roleRepository.findByName("ROLE_USER");
+            if (roleOpt.isPresent()) {
+                role = roleOpt.get();
+            } else {
+                role = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular User").build());
+            }
             user.getRoles().add(role);
         } else {
             for (String roleName : roles) {
@@ -44,7 +51,13 @@ public class UserService {
                     roleName = "ROLE_" + roleName;
                 }
                 final String fRoleName = roleName;
-                var role = roleRepository.findByName(fRoleName).orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(fRoleName).build()));
+                com.sliit.campusflow.modules.auth.model.Role role;
+                var roleOpt2 = roleRepository.findByName(fRoleName);
+                if (roleOpt2.isPresent()) {
+                    role = roleOpt2.get();
+                } else {
+                    role = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(fRoleName).build());
+                }
                 user.getRoles().add(role);
             }
         }
@@ -76,7 +89,7 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(password));
         }
 
-        return userRepository.save(user);
+        return userRepository.save(Objects.requireNonNull(user));
     }
 
     public User updateCurrentUserProfile(UUID id, String name, String picture) {
@@ -94,7 +107,7 @@ public class UserService {
             user.setPicture(trimmedPicture.isEmpty() ? null : trimmedPicture);
         }
 
-        return userRepository.save(user);
+        return userRepository.save(Objects.requireNonNull(user));
     }
 
     @Transactional
