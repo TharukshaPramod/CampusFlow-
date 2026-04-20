@@ -1,10 +1,44 @@
 {
+  "groups": [
+    {
+      "name": "app",
+      "type": "java.lang.Object",
+      "sourceType": "com.sliit.campusflow"
+    },
+    {
+      "name": "app.cors",
+      "type": "java.lang.Object",
+      "sourceType": "com.sliit.campusflow.config.CorsConfig"
+    },
+    {
+      "name": "app.jwt",
+      "type": "java.lang.Object",
+      "sourceType": "com.sliit.campusflow.modules.auth.security.JwtUtil"
+    },
+    {
+      "name": "app.frontend",
+      "type": "java.lang.Object",
+      "sourceType": "com.sliit.campusflow.config.SecurityConfig"
+    }
+  ],
   "properties": [
     {
       "name": "app.cors.allowed-origins",
       "type": "java.util.List<java.lang.String>",
       "description": "Allowed CORS origins for the frontend",
       "sourceType": "com.sliit.campusflow.config.CorsConfig"
+    },
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "description": "JWT signing secret used to issue and validate tokens",
+      "sourceType": "com.sliit.campusflow.modules.auth.security.JwtUtil"
+    },
+    {
+      "name": "app.jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT expiration in milliseconds",
+      "sourceType": "com.sliit.campusflow.modules.auth.security.JwtUtil"
     },
     {
       "name": "app.jwt.issuer",
@@ -22,6 +56,12 @@
       "name": "app.jwt.refresh-token-ttl",
       "type": "java.time.Duration",
       "description": "JWT refresh token TTL",
+      "sourceType": "com.sliit.campusflow.config.SecurityConfig"
+    },
+    {
+      "name": "app.frontend.url",
+      "type": "java.lang.String",
+      "description": "Public frontend URL used for OAuth redirects",
       "sourceType": "com.sliit.campusflow.config.SecurityConfig"
     }
   ]
