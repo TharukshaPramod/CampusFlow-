@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, Menu, X } from 'lucide-react';
+import { Layers, Menu, X, User, LogOut } from 'lucide-react';
+import { useAuth } from '../../../hooks/useAuth';
 
 export const Navbar = () => {
+  const { user, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -16,12 +19,27 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    setProfileMenuOpen(false);
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Resources', path: '/resources' },
     { name: 'Bookings', path: '/bookings' },
     { name: 'Support', path: '/incidents' }
   ];
+
+  const resolvedNavLinks = navLinks.map((link) => ({
+    ...link,
+    path: user || link.path === '/' ? link.path : '/login'
+  }));
+  const dashboardPath = user
+    ? user.roles?.includes('ADMIN')
+      ? '/admin'
+      : '/dashboard'
+    : '/login';
 
   return (
     <>
@@ -46,7 +64,7 @@ export const Navbar = () => {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
+              {resolvedNavLinks.map((link) => (
                 <Link 
                   key={link.name} 
                   to={link.path}
@@ -63,16 +81,64 @@ export const Navbar = () => {
 
             {/* Call to Action */}
             <div className="hidden md:flex items-center gap-4">
+              {user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full transition-colors ${
+                      isScrolled ? 'hover:bg-slate-100' : 'hover:bg-white/70'
+                    }`}
+                  >
+                    {user.picture ? (
+                      <img
+                        src={user.picture}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold">
+                        {user.name?.charAt(0)?.toUpperCase()}
+                      </div>
+                    )}
+                    <span className={`text-sm font-medium ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}>
+                      {user.name}
+                    </span>
+                  </button>
+
+                  {profileMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
+                      <Link
+                        to="/profile"
+                        className="w-full px-4 py-3 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors text-sm"
+                      >
+                        <User className="w-4 h-4" />
+                        Profile
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setProfileMenuOpen(false);
+                        }}
+                        className="w-full px-4 py-3 text-left flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors text-sm border-t border-slate-200"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link 
+                  to="/login" 
+                  className={`text-sm font-medium hover:text-primary transition-colors ${
+                    isScrolled ? 'text-slate-600' : 'text-slate-700'
+                  }`}
+                >
+                  Log in
+                </Link>
+              )}
               <Link 
-                to="/login" 
-                className={`text-sm font-medium hover:text-primary transition-colors ${
-                  isScrolled ? 'text-slate-600' : 'text-slate-700'
-                }`}
-              >
-                Log in
-              </Link>
-              <Link 
-                to="/admin" 
+                to={dashboardPath}
                 className="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md active:scale-95"
               >
                 Dashboard
@@ -102,7 +168,7 @@ export const Navbar = () => {
             className="md:hidden mt-20 mx-auto max-w-7xl bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-lg overflow-hidden pointer-events-auto z-40 relative px-4 sm:px-6"
           >
             <div className="px-4 pt-2 pb-6 space-y-1">
-              {navLinks.map((link) => (
+              {resolvedNavLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.path}
@@ -113,15 +179,36 @@ export const Navbar = () => {
                 </Link>
               ))}
               <div className="pt-4 flex flex-col gap-3 px-3">
+                {user ? (
+                  <>
+                    <Link
+                      to="/profile"
+                      className="w-full text-center py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full text-center py-2.5 border border-red-200 rounded-lg text-red-600 font-medium hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <Link 
+                    to="/login"
+                    className="w-full text-center py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Log in
+                  </Link>
+                )}
                 <Link 
-                  to="/login"
-                  className="w-full text-center py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Log in
-                </Link>
-                <Link 
-                  to="/admin"
+                  to={dashboardPath}
                   className="w-full text-center py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark shadow-sm"
                   onClick={() => setMobileMenuOpen(false)}
                 >
