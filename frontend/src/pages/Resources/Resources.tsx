@@ -67,7 +67,7 @@ export default function Resources() {
 
   const handleReset = () => {
     setFilters({});
-    fetchResources();
+    resourceService.getAll({}).then(setResources);
   };
 
   return (

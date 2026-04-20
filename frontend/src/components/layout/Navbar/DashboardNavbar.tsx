@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Menu, X, Bell } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { LogOut, User, Menu, X, Bell, Layers } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 
 export const DashboardNavbar = () => {
@@ -8,21 +8,36 @@ export const DashboardNavbar = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const getLinkStyle = (path: string) => {
+    return location.pathname.startsWith(path)
+      ? "text-primary font-semibold"
+      : "text-slate-600 hover:text-primary";
+  };
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="px-6 py-4">
         <div className="flex justify-between items-center">
           {/* Left side - Logo */}
-          <div className="flex items-center gap-2">
-            <div className="bg-primary p-2 rounded-lg">
-              <span className="text-white font-bold text-lg">CF</span>
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="bg-primary p-2 rounded-lg group-hover:bg-primary-light transition-colors">
+              <Layers className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-slate-900">CampusFlow</span>
-          </div>
+            <span className="text-lg font-bold tracking-tight text-slate-900">
+              Campus<span className="text-primary">Flow</span>
+            </span>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
+            <nav className="flex items-center gap-6 mr-4 border-r border-slate-200 pr-6">
+              <Link to="/admin/resources" className={`text-sm font-medium transition-colors ${getLinkStyle('/admin/resource')}`}>Resources</Link>
+              <Link to="/admin/bookings" className={`text-sm font-medium transition-colors ${getLinkStyle('/admin/booking')}`}>Bookings</Link>
+              <Link to="/admin/incidents" className={`text-sm font-medium transition-colors ${getLinkStyle('/admin/incident')}`}>Support</Link>
+              <Link to="/admin/users" className={`text-sm font-medium transition-colors ${getLinkStyle('/admin/user')}`}>System</Link>
+            </nav>
             {/* Notifications */}
             <button className="relative p-2 text-slate-600 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors">
               <Bell className="w-5 h-5" />
@@ -97,6 +112,12 @@ export const DashboardNavbar = () => {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="mt-4 flex flex-col gap-2 md:hidden">
+            <nav className="flex flex-col gap-1 border-b border-slate-200 pb-3 mb-3">
+              <Link onClick={() => setMobileMenuOpen(false)} to="/admin/resources" className={`px-3 py-2 rounded-lg text-sm font-medium ${getLinkStyle('/admin/resource')}`}>Resources</Link>
+              <Link onClick={() => setMobileMenuOpen(false)} to="/admin/bookings" className={`px-3 py-2 rounded-lg text-sm font-medium ${getLinkStyle('/admin/booking')}`}>Bookings</Link>
+              <Link onClick={() => setMobileMenuOpen(false)} to="/admin/incidents" className={`px-3 py-2 rounded-lg text-sm font-medium ${getLinkStyle('/admin/incident')}`}>Support</Link>
+              <Link onClick={() => setMobileMenuOpen(false)} to="/admin/users" className={`px-3 py-2 rounded-lg text-sm font-medium ${getLinkStyle('/admin/user')}`}>System</Link>
+            </nav>
             {user?.picture ? (
               <img
                 src={user.picture}

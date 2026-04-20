@@ -83,7 +83,7 @@ public class ResourceService {
                 predicates.add(cb.equal(root.get("resourceType").get("id"), typeId));
             }
 
-            if (status != null) {
+            if (status != null && !status.trim().isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), status));
             }
 

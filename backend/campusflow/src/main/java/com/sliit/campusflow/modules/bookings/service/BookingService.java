@@ -32,6 +32,10 @@ public class BookingService {
     private final BookingMapper bookingMapper;
 
     public BookingResponse createBooking(UUID userId, BookingRequest request) {
+        if (request.getStartTime().isBefore(java.time.LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot book a time in the past");
+        }
+
         if (request.getStartTime().isAfter(request.getEndTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");
         }
@@ -88,8 +92,74 @@ public class BookingService {
         return bookingMapper.toResponseList(bookingRepository.findAll());
     }
 
+    public BookingResponse getBookingById(UUID bookingId) {
+        Booking booking = bookingRepository.findById(java.util.Objects.requireNonNull(bookingId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+        return bookingMapper.toResponse(booking);
+    }
+
     public List<BookingResponse> getUserBookings(UUID userId) {
-        return bookingMapper.toResponseList(bookingRepository.findByUserId(userId));
+        return bookingMapper.toResponseList(bookingRepository.findByUserId(java.util.Objects.requireNonNull(userId)));
+    }
+
+    public BookingResponse updateBooking(UUID bookingId, BookingRequest request, User currentUser) {
+        Booking booking = bookingRepository.findById(java.util.Objects.requireNonNull(bookingId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        if (!booking.getUser().getId().equals(currentUser.getId())) {
+             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own bookings");
+        }
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending bookings can be edited");
+        }
+
+        if (request.getStartTime().isBefore(java.time.LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot book a time in the past");
+        }
+
+        if (request.getStartTime().isAfter(request.getEndTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");
+        }
+
+        // Validate no overlap
+        List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(
+                request.getResourceId(),
+                request.getStartTime(),
+                request.getEndTime(),
+                Arrays.asList(BookingStatus.PENDING, BookingStatus.APPROVED)
+        );
+
+        // Filter out current booking from being considered an overlap
+        UUID currentBookingId = booking.getId();
+        overlappingBookings.removeIf(b -> java.util.Objects.equals(b.getId(), currentBookingId));
+
+        if (!overlappingBookings.isEmpty()) {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm a");
+            java.util.List<String> conflictDetailsList = new java.util.ArrayList<>();
+            for (Booking conflict : overlappingBookings) {
+                conflictDetailsList.add(conflict.getStartTime().format(formatter) + " to " + conflict.getEndTime().format(formatter));
+            }
+            String allConflicts = String.join("|||", conflictDetailsList);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource is already booked during this time. Conflicting bookings: |||" + allConflicts);
+        }
+
+        Resource resource = resourceRepository.findById(java.util.Objects.requireNonNull(request.getResourceId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found"));
+
+        if (!"ACTIVE".equalsIgnoreCase(resource.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resource is currently " + resource.getStatus() + " and cannot be booked.");
+        }
+
+        booking.setResource(resource);
+        booking.setStartTime(request.getStartTime());
+        booking.setEndTime(request.getEndTime());
+        booking.setPurpose(request.getPurpose());
+        booking.setTitle(request.getPurpose());
+        booking.setExpectedAttendees(request.getExpectedAttendees());
+
+        booking = bookingRepository.save(booking);
+        return bookingMapper.toResponse(booking);
     }
 
     public BookingResponse updateBookingStatus(UUID bookingId, BookingStatusUpdate update, User currentUser) {

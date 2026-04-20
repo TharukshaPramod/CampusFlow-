@@ -45,6 +45,21 @@ public class BookingController {
         }
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a specific booking by ID")
+    public ResponseEntity<BookingResponse> getBookingById(@PathVariable UUID id) {
+        return ResponseEntity.ok(bookingService.getBookingById(id));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update a pending booking (Edit)")
+    public ResponseEntity<BookingResponse> updateBooking(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID id,
+            @RequestBody BookingRequest request) {
+        return ResponseEntity.ok(bookingService.updateBooking(id, request, user));
+    }
+
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update booking status (Approve/Reject via Admin, Cancel via User)")
     public ResponseEntity<BookingResponse> updateBookingStatus(

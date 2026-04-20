@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { resourceService } from "../../services/api/resourceService";
+import { useAuth } from "../../hooks/useAuth";
 import type { Resource } from "../../types/resource";
 import type { ResourceFeature } from "../../types/ResourceFeature";
 import type { ResourceMaintenance } from "../../types/ResourceMaintenance";
@@ -20,6 +21,8 @@ export default function ResourceDetail() {
   const [maintenance, setMaintenance] = useState<ResourceMaintenance[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"details" | "features" | "maintenance">("details");
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.includes("ADMIN") || user?.roles?.includes("ROLE_ADMIN");
 
   useEffect(() => {
     if (!id) return;
@@ -93,20 +96,33 @@ export default function ResourceDetail() {
           </span>
         </div>
 
-        {/* Admin Actions */}
+        {/* Actions */}
         <div className="flex gap-3">
-          <Link
-            to={`/resources/${resource.id}/edit`}
-            className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition"
-          >
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            className="border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition"
-          >
-            Delete
-          </button>
+          {resource.status === 'ACTIVE' && (
+            <Link
+              to={`/bookings/new?resourceId=${resource.id}`}
+              className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm transition"
+            >
+              Book Now
+            </Link>
+          )}
+
+          {isAdmin && (
+            <>
+              <Link
+                to={`/resources/${resource.id}/edit`}
+                className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700 transition"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                className="border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition"
+              >
+                Delete
+              </button>
+            </>
+          )}
         </div>
       </div>
 

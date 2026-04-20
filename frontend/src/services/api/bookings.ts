@@ -12,6 +12,16 @@ export const bookingService = {
     return data;
   },
 
+  getBookingById: async (id: string): Promise<Booking> => {
+    const { data } = await apiClient.get<Booking>(`/v1/bookings/${id}`);
+    return data;
+  },
+
+  updateBooking: async (id: string, request: BookingRequest): Promise<Booking> => {
+    const { data } = await apiClient.put<Booking>(`/v1/bookings/${id}`, request);
+    return data;
+  },
+
   updateBookingStatus: async (id: string, update: BookingStatusUpdate): Promise<Booking> => {
     const { data } = await apiClient.patch<Booking>(`/v1/bookings/${id}/status`, update);
     return data;
