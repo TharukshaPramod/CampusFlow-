@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +38,7 @@ public class BookingController {
             @AuthenticationPrincipal User user) {
         
         // In a real scenario, you'd check user role. Here's a basic check utilizing user object context.
-        if (user.getRoles().contains("ADMIN")) {
+        if (user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"))) {
             return ResponseEntity.ok(bookingService.getAllBookings());
         } else {
             return ResponseEntity.ok(bookingService.getUserBookings(user.getId()));

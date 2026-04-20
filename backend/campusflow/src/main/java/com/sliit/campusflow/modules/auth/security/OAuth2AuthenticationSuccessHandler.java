@@ -1,6 +1,8 @@
 package com.sliit.campusflow.modules.auth.security;
 
+import com.sliit.campusflow.modules.auth.model.Role;
 import com.sliit.campusflow.modules.auth.model.User;
+import com.sliit.campusflow.modules.auth.repository.RoleRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,13 +15,16 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     @Autowired private UserRepository userRepository;
+    @Autowired private RoleRepository roleRepository;
     @Autowired private JwtUtil jwtUtil;
 
     @Value("${app.frontend.url:http://localhost:5173}")
@@ -52,19 +57,25 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 return;
             }
 
-            User user = existingUser != null ? existingUser : userRepository.save(User.builder()
+            User user;
+            if (existingUser != null) {
+                user = existingUser;
+            } else {
+                user = User.builder()
                         .googleId(googleId)
                         .email(email)
                         .name(name)
                         .picture(picture)
                         .authProvider("GOOGLE")
                         .password(null)
-                        .roles("USER")
                         .active(true)
-                        .build());
+                        .roles(new HashSet<>())
+                        .build();
 
-            if (user.getRoles() == null || user.getRoles().isBlank()) {
-                user.setRoles("USER");
+                Role userRole = roleRepository.findByName("ROLE_USER").orElseGet(() -> 
+                    roleRepository.save(Role.builder().name("ROLE_USER").description("Regular User").build())
+                );
+                user.getRoles().add(userRole);
             }
 
             if (!user.isActive()) {
@@ -103,7 +114,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         Set<String> normalizedRoles = user.getRoleSet().stream()
                 .map(role -> role.startsWith("ROLE_") ? role.substring(5) : role)
                 .map(String::toUpperCase)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         return normalizedRoles.contains("ADMIN")
                 || normalizedRoles.contains("TECHNICIAN")

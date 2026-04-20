@@ -3,6 +3,7 @@ package com.sliit.campusflow.modules.auth.service;
 import com.sliit.campusflow.modules.auth.model.User;
 import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.PasswordResetTokenRepository;
+import com.sliit.campusflow.modules.auth.repository.RoleRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import java.util.*;
 public class UserService {
 
     @Autowired private UserRepository userRepository;
+    @Autowired private RoleRepository roleRepository;
     @Autowired private EmailVerificationTokenRepository emailVerificationTokenRepository;
     @Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -31,10 +33,20 @@ public class UserService {
 
     public User updateUserRoles(UUID id, Set<String> roles) {
         User user = getUserById(id);
+        user.getRoles().clear();
+        
         if (roles == null || roles.isEmpty()) {
-            user.setRoles("USER");
+            var role = roleRepository.findByName("ROLE_USER").orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular User").build()));
+            user.getRoles().add(role);
         } else {
-            user.setRoles(String.join(",", roles));
+            for (String roleName : roles) {
+                if (!roleName.startsWith("ROLE_")) {
+                    roleName = "ROLE_" + roleName;
+                }
+                final String fRoleName = roleName;
+                var role = roleRepository.findByName(fRoleName).orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(fRoleName).build()));
+                user.getRoles().add(role);
+            }
         }
         return userRepository.save(user);
     }

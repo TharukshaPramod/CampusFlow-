@@ -9,6 +9,7 @@ import com.sliit.campusflow.modules.auth.model.User;
 import com.sliit.campusflow.modules.auth.repository.AdminInvitationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.PasswordResetTokenRepository;
+import com.sliit.campusflow.modules.auth.repository.RoleRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
 import com.sliit.campusflow.modules.auth.security.JwtUtil;
 import com.sliit.campusflow.modules.auth.service.EmailService;
@@ -33,6 +34,7 @@ public class AuthController {
     @Autowired private PasswordResetTokenRepository tokenRepository;
     @Autowired private AdminInvitationTokenRepository adminInvitationTokenRepository;
     @Autowired private EmailVerificationTokenRepository emailVerificationTokenRepository;
+    @Autowired private RoleRepository roleRepository;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EmailService emailService;
@@ -58,8 +60,9 @@ public class AuthController {
         user.setEmail(req.getEmail().toLowerCase());
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setAuthProvider("LOCAL");
-        user.setRoles("USER");
         user.setActive(true);
+        var role = roleRepository.findByName("ROLE_USER").orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular user").build()));
+        user.getRoles().add(role);
 
         userRepository.save(user);
         String verificationCode = generateVerificationCode();
@@ -108,7 +111,7 @@ public class AuthController {
                 "id", u.getId(),
                 "email", u.getEmail(),
                 "name", u.getName(),
-                "roles", u.getRoles()
+                "roles", u.getRoles().stream().map(com.sliit.campusflow.modules.auth.model.Role::getName).toArray()
             )
         ));
     }
@@ -344,7 +347,13 @@ public class AuthController {
         user.setEmail(invite.getEmail());
         user.setPassword(passwordEncoder.encode(password));
         user.setAuthProvider("LOCAL");
-        user.setRoles(invite.getRole());
+        var roleName = invite.getRole();
+        if (!roleName.startsWith("ROLE_")) {
+            roleName = "ROLE_" + roleName;
+        }
+        var finalRoleName = roleName;
+        var role = roleRepository.findByName(finalRoleName).orElseGet(() -> roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(finalRoleName).build()));
+        user.getRoles().add(role);
         user.setActive(true);
         user.setEmailVerified(false);
         user = userRepository.save(user);

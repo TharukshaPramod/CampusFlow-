@@ -4,7 +4,6 @@ import com.sliit.campusflow.common.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -25,7 +24,7 @@ public class User extends BaseEntity {
     private String password;
     
     @Column(name = "first_name")
-    private String name;  // Using first_name column but name field
+    private String name;
     
     @Column(name = "profile_picture_url")
     private String picture;
@@ -48,26 +47,22 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLogin;
     
-    @Column(name = "roles")
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
     @Builder.Default
-    private String roles = "USER";
+    private Set<Role> roles = new HashSet<>();
     
     @Transient
     public Set<String> getRoleSet() {
         if (roles == null || roles.isEmpty()) {
-            return new HashSet<>(Set.of("USER"));
+            return new HashSet<>(Set.of("ROLE_USER"));
         }
-        return Arrays.stream(roles.split(","))
-                .map(String::trim)
+        return roles.stream()
+                .map(Role::getName)
                 .collect(Collectors.toSet());
-    }
-    
-    @Transient
-    public void setRoleSet(Set<String> roleSet) {
-        if (roleSet == null || roleSet.isEmpty()) {
-            this.roles = "USER";
-        } else {
-            this.roles = String.join(",", roleSet);
-        }
     }
 }

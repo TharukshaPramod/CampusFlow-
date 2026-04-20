@@ -96,7 +96,7 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
-        boolean isAdmin = currentUser.getRoles().contains("ADMIN");
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"));
 
         if (update.getStatus() == BookingStatus.CANCELLED) {
             // Users can only cancel their own bookings, admins can cancel any
@@ -121,7 +121,7 @@ public class BookingService {
     }
 
     public void bulkDeleteBookings(User currentUser, String timeRange) {
-        boolean isAdmin = currentUser.getRoles().contains("ADMIN");
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"));
         java.time.LocalDateTime threshold = null;
         
         switch (timeRange.toLowerCase()) {

@@ -28,7 +28,7 @@ public class JwtUtil {
     public String generateToken(User user) {
         var roles = user.getRoleSet() != null 
             ? user.getRoleSet().stream()
-                .map(r -> "ROLE_" + r)
+                .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
                 .collect(Collectors.toList())
             : java.util.List.of();
 
