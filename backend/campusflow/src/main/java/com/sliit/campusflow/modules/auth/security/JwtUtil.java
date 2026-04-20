@@ -40,7 +40,7 @@ public class JwtUtil {
                 .claim("roles", roles)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+            .signWith(getSigningKey())
                 .compact();
     }
 
