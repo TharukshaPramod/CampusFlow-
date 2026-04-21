@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Layers, Menu, X, User, LogOut } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
+import { NotificationBell } from './NotificationBell';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -78,51 +79,54 @@ export const Navbar = () => {
             {/* Call to Action */}
             <div className="hidden md:flex items-center gap-4">
               {user ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-full transition-colors ${
-                      isScrolled ? 'hover:bg-slate-100' : 'hover:bg-white/70'
-                    }`}
-                  >
-                    {user.picture ? (
-                      <img
-                        src={user.picture}
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold">
-                        {user.name?.charAt(0)?.toUpperCase()}
+                <>
+                  <NotificationBell />
+                  <div className="relative">
+                    <button
+                      onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full transition-colors ${
+                        isScrolled ? 'hover:bg-slate-100' : 'hover:bg-white/70'
+                      }`}
+                    >
+                      {user.picture ? (
+                        <img
+                          src={user.picture}
+                          alt={user.name}
+                          className="w-8 h-8 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold">
+                          {user.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className={`text-sm font-medium ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}>
+                        {user.name}
+                      </span>
+                    </button>
+
+                    {profileMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
+                        <Link
+                          to="/profile"
+                          className="w-full px-4 py-3 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors text-sm"
+                        >
+                          <User className="w-4 h-4" />
+                          Profile
+                        </Link>
+                        <button
+                          onClick={() => {
+                            logout();
+                            setProfileMenuOpen(false);
+                          }}
+                          className="w-full px-4 py-3 text-left flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors text-sm border-t border-slate-200"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
                       </div>
                     )}
-                    <span className={`text-sm font-medium ${isScrolled ? 'text-slate-700' : 'text-slate-800'}`}>
-                      {user.name}
-                    </span>
-                  </button>
-
-                  {profileMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
-                      <Link
-                        to="/profile"
-                        className="w-full px-4 py-3 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors text-sm"
-                      >
-                        <User className="w-4 h-4" />
-                        Profile
-                      </Link>
-                      <button
-                        onClick={() => {
-                          logout();
-                          setProfileMenuOpen(false);
-                        }}
-                        className="w-full px-4 py-3 text-left flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors text-sm border-t border-slate-200"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                </>
               ) : (
                 <Link 
                   to="/login" 
@@ -145,12 +149,15 @@ export const Navbar = () => {
 
             {/* Mobile menu button */}
             <div className="md:hidden flex items-center">
-              <button 
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-md text-slate-600 hover:text-primary hover:bg-slate-100 focus:outline-none"
-              >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
+              <div className="flex items-center gap-2">
+                {user && <NotificationBell />}
+                <button 
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="p-2 rounded-md text-slate-600 hover:text-primary hover:bg-slate-100 focus:outline-none"
+                >
+                  {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>

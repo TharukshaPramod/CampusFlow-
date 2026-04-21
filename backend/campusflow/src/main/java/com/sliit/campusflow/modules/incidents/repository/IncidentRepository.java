@@ -13,4 +13,6 @@ public interface IncidentRepository extends JpaRepository<Incident, UUID> {
     List<Incident> findByCreatorId(UUID creatorId);
     List<Incident> findByTechnicianId(UUID technicianId);
     List<Incident> findByStatus(IncidentStatus status);
+    long countByCreatorId(UUID creatorId);
+    long countByTechnicianId(UUID technicianId);
 }
