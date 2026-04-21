@@ -5,6 +5,8 @@ import ResourceDetail from "./pages/Resources/ResourceDetail";
 import ResourceCreate from "./pages/Resources/ResourceCreate";
 import Bookings from "./pages/Bookings/Bookings";
 import Incidents from "./pages/Incidents/Incidents";
+import IncidentCreate from "./pages/Incidents/IncidentCreate";
+import IncidentDetail from "./pages/Incidents/IncidentDetail";
 import Notifications from "./pages/Notifications/Notifications";
 import Dashboard from "./pages/Admin/Dashboard";
 import Users from "./pages/Admin/Users";
@@ -80,6 +82,9 @@ function App() {
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/bookings/new" element={<BookingCreate />} />
         <Route path="/incidents" element={<Incidents />} />
+        <Route path="/incidents/new" element={<IncidentCreate />} />
+        <Route path="/incidents/:id" element={<IncidentDetail />} />
+        <Route path="/incidents/:id/edit" element={<IncidentCreate />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
