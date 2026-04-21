@@ -233,10 +233,15 @@ export default function IncidentDetail() {
                          {comment.authorName ? comment.authorName.substring(0, 2).toUpperCase() : '?'}
                        </div>
                        <div className={`flex flex-col max-w-[80%] ${comment.authorId === user?.id ? 'items-end' : 'items-start'}`}>
-                         <span className="text-xs text-slate-500 font-medium mb-1">
-                           {comment.authorName} • {new Date(comment.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                           {comment.updatedAt && comment.updatedAt !== comment.createdAt && " (edited)"}
-                         </span>
+                         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
+                           <span>{comment.authorName}</span>
+                           {comment.authorId === incident.creatorId && <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">★ Creator</span>}
+                           {comment.authorId !== incident.creatorId && comment.authorId === incident.technicianId && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">🛠️ Tech</span>}
+                           {comment.authorId !== incident.creatorId && comment.authorId !== incident.technicianId && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">🛡️ Admin</span>}
+                           <span>•</span>
+                           <span>{new Date(comment.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                           {comment.updatedAt && comment.updatedAt !== comment.createdAt && <span className="italic opacity-80">(edited)</span>}
+                         </div>
                          
                          {editingCommentId === comment.id ? (
                             <div className="flex flex-col gap-2 w-full min-w-[250px]">

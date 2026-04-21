@@ -4,7 +4,7 @@ import { UploadCloud, X, AlertTriangle } from "lucide-react";
 import { incidentService } from "../../services/api/incidents";
 import { resourceService } from "../../services/api/resourceService";
 import type { Resource } from "../../types/resource";
-import { IncidentPriority } from "../../types/incident";
+import { IncidentPriority, IncidentAttachment } from "../../types/incident";
 
 export default function IncidentCreate() {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ export default function IncidentCreate() {
   const [preferredContact, setPreferredContact] = useState("");
 
   const [attachments, setAttachments] = useState<{ name: string; base64: string }[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<IncidentAttachment[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +46,7 @@ export default function IncidentCreate() {
           setDescription(incData.description);
           setPreferredContact(incData.preferredContact);
           setResourceId(incData.resourceId || "");
+          setExistingAttachments(incData.attachments || []);
         }
       } catch (err: any) {
         setError("Failed to load initial data.");
@@ -56,7 +58,7 @@ export default function IncidentCreate() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + attachments.length > 3) {
+    if (files.length + attachments.length + existingAttachments.length > 3) {
       alert("You can only upload a maximum of 3 attachments.");
       return;
     }
@@ -92,6 +94,16 @@ export default function IncidentCreate() {
     setAttachments(prev => prev.filter((_, i) => i !== indexToRemove));
   };
 
+  const removeExistingAttachment = async (attachmentId: string) => {
+    if (!window.confirm("Delete this attachment permanently?")) return;
+    try {
+      await incidentService.deleteAttachment(attachmentId);
+      setExistingAttachments(prev => prev.filter(a => a.id !== attachmentId));
+    } catch {
+      alert("Failed to delete attachment.");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !category || !preferredContact) {
@@ -104,7 +116,6 @@ export default function IncidentCreate() {
       setError("");
 
       if (isEditMode && id) {
-        // Edit mode doesn't support changing attachments directly here to keep it simple
         await incidentService.updateIncident(id, {
           title,
           category,
@@ -114,6 +125,9 @@ export default function IncidentCreate() {
           resourceId: resourceId || undefined,
           location: location || undefined
         });
+        if (attachments.length > 0) {
+          await incidentService.addAttachments(id, { attachmentsBase64: attachments.map(a => a.base64) });
+        }
         navigate(`/incidents/${id}`);
       } else {
         await incidentService.createIncident({
@@ -247,45 +261,58 @@ export default function IncidentCreate() {
              />
           </div>
 
-          {!isEditMode && (
-            <div className="border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
-               <div className="flex items-start justify-between mb-4">
-                   <div>
-                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><UploadCloud size={18} /> Evidence Attachments</h3>
-                      <p className="text-xs text-slate-500 mt-1">Upload up to 3 image evidence files (Max 5MB each). Important for rapid support.</p>
-                   </div>
-                   {attachments.length < 3 && (
-                      <label className="cursor-pointer bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-                        Browse Files
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          multiple 
-                          className="hidden" 
-                          onChange={handleFileUpload} 
-                        />
-                      </label>
-                   )}
-               </div>
+          <div className="border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
+             <div className="flex items-start justify-between mb-4">
+                 <div>
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><UploadCloud size={18} /> Evidence Attachments</h3>
+                    <p className="text-xs text-slate-500 mt-1">Upload up to 3 image evidence files (Max 5MB each).</p>
+                 </div>
+                 {(attachments.length + existingAttachments.length) < 3 && (
+                    <label className="cursor-pointer bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                      Browse Files
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        className="hidden" 
+                        onChange={handleFileUpload} 
+                      />
+                    </label>
+                 )}
+             </div>
 
-               {attachments.length > 0 && (
-                  <div className="flex flex-wrap gap-4 mt-4">
-                    {attachments.map((file, idx) => (
-                      <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm w-32 h-32 bg-white flex items-center justify-center">
-                        <img src={file.base64} alt="Evidence" className="w-full h-full object-cover" />
-                        <button 
-                          type="button"
-                          onClick={() => removeAttachment(idx)}
-                          className="absolute top-2 right-2 bg-slate-900/60 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-                        >
-                           <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-               )}
-            </div>
-          )}
+             {(attachments.length > 0 || existingAttachments.length > 0) && (
+                <div className="flex flex-wrap gap-4 mt-4">
+                  {existingAttachments.map((file) => (
+                    <div key={file.id} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm w-32 h-32 bg-white flex items-center justify-center">
+                      <img src={file.fileUrl} alt="Evidence" className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => removeExistingAttachment(file.id)}
+                        className="absolute top-2 right-2 bg-slate-900/60 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                        title="Delete permanently"
+                      >
+                         <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {attachments.map((file, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm w-32 h-32 bg-white flex items-center justify-center">
+                      <img src={file.base64} alt="Evidence" className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => removeAttachment(idx)}
+                        className="absolute top-2 right-2 bg-slate-900/60 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                        title="Remove before upload"
+                      >
+                         <X size={14} />
+                      </button>
+                      <span className="absolute bottom-1 right-1 bg-yellow-100 text-yellow-800 text-[10px] px-1 rounded font-bold">NEW</span>
+                    </div>
+                  ))}
+                </div>
+             )}
+          </div>
 
           <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
             <button

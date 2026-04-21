@@ -5,7 +5,9 @@ import {
   IncidentUpdateRequest,
   IncidentStatusUpdate,
   IncidentCommentRequest,
-  IncidentComment
+  IncidentComment,
+  IncidentAttachment,
+  IncidentAddAttachmentsRequest
 } from "../../types/incident";
 
 export const incidentService = {
@@ -58,4 +60,13 @@ export const incidentService = {
   deleteComment: async (commentId: string): Promise<void> => {
     await apiClient.delete(`/v1/incidents/comments/${commentId}`);
   },
+
+  addAttachments: async (id: string, request: IncidentAddAttachmentsRequest): Promise<IncidentAttachment[]> => {
+    const { data } = await apiClient.post<IncidentAttachment[]>(`/v1/incidents/${id}/attachments`, request);
+    return data;
+  },
+
+  deleteAttachment: async (attachmentId: string): Promise<void> => {
+    await apiClient.delete(`/v1/incidents/attachments/${attachmentId}`);
+  }
 };

@@ -231,6 +231,53 @@ public class IncidentService {
         commentRepository.delete(Objects.requireNonNull(comment));
     }
 
+    public List<IncidentAttachmentResponse> addAttachments(UUID incidentId, IncidentAddAttachmentsRequest request, User currentUser) {
+        Incident incident = incidentRepository.findById(Objects.requireNonNull(incidentId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident not found"));
+
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"));
+        if (!isAdmin && !incident.getCreator().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the creator or Admin can add evidence");
+        }
+
+        if (request.getAttachmentsBase64() == null || request.getAttachmentsBase64().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No attachments provided");
+        }
+
+        List<IncidentAttachment> existing = attachmentRepository.findByIncidentId(incident.getId());
+        if (existing.size() + request.getAttachmentsBase64().size() > 3) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum 3 attachments allowed per incident");
+        }
+
+        for (String base64Data : request.getAttachmentsBase64()) {
+            try {
+                String fileUrl = storageService.uploadBase64Image(base64Data, INCIDENT_BUCKET);
+                IncidentAttachment attachment = new IncidentAttachment();
+                attachment.setIncident(incident);
+                attachment.setFileUrl(fileUrl);
+                attachment.setFileName("attachment_" + UUID.randomUUID().toString().substring(0, 6));
+                attachmentRepository.save(attachment);
+            } catch (Exception e) {
+                log.error("Failed to upload supplementary attachment", e);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process image attachment(s)");
+            }
+        }
+
+        return incidentMapper.toAttachmentResponseList(attachmentRepository.findByIncidentId(incident.getId()));
+    }
+
+    public void deleteAttachment(UUID attachmentId, User currentUser) {
+        IncidentAttachment attachment = attachmentRepository.findById(Objects.requireNonNull(attachmentId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found"));
+
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"));
+        if (!isAdmin && !attachment.getIncident().getCreator().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the creator or Admin can delete evidence");
+        }
+
+        attachmentRepository.delete(Objects.requireNonNull(attachment));
+    }
+
     private IncidentResponse enrichIncidentWithRelations(Incident incident) {
         IncidentResponse response = incidentMapper.toResponse(incident);
         

@@ -115,7 +115,14 @@ export default function AdminIncidents() {
 
                     <td className="px-6 py-5 max-w-[250px]">
                       <div className="font-bold text-slate-800 text-sm truncate" title={inc.title}>{inc.title}</div>
-                      <div className="text-slate-500 text-xs mt-1 font-medium bg-slate-100 inline-block px-2 py-0.5 rounded">Creator: {inc.creatorName || 'System'}</div>
+                      <div className="flex gap-2 items-center mt-1">
+                        <div className="text-slate-500 text-xs font-medium bg-slate-100 inline-block px-2 py-0.5 rounded">Creator: {inc.creatorName || 'System'}</div>
+                        {inc.attachments && inc.attachments.length > 0 && (
+                          <div className="text-blue-600 text-xs font-bold bg-blue-50 inline-flex items-center gap-1 px-2 py-0.5 rounded" title={`${inc.attachments.length} Evidence attached`}>
+                            📎 {inc.attachments.length}
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-6 py-5 whitespace-nowrap space-y-2">

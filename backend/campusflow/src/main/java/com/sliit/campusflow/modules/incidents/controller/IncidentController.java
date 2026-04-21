@@ -114,4 +114,22 @@ public class IncidentController {
         incidentService.deleteComment(commentId, user);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{id}/attachments")
+    @Operation(summary = "Add evidence attachments to an incident")
+    public ResponseEntity<List<IncidentAttachmentResponse>> addAttachments(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User user,
+            @RequestBody IncidentAddAttachmentsRequest request) {
+        return ResponseEntity.ok(incidentService.addAttachments(id, request, user));
+    }
+
+    @DeleteMapping("/attachments/{attachmentId}")
+    @Operation(summary = "Delete an attachment")
+    public ResponseEntity<Void> deleteAttachment(
+            @PathVariable UUID attachmentId,
+            @AuthenticationPrincipal User user) {
+        incidentService.deleteAttachment(attachmentId, user);
+        return ResponseEntity.ok().build();
+    }
 }

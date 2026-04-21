@@ -83,6 +83,10 @@ export interface IncidentUpdateRequest {
   location?: string;
 }
 
+export interface IncidentAddAttachmentsRequest {
+  attachmentsBase64: string[];
+}
+
 export interface IncidentStatusUpdate {
   status: IncidentStatus;
   rejectionReason?: string;
