@@ -6,6 +6,7 @@ import com.sliit.campusflow.modules.resources.mapper.ResourceMapper;
 import com.sliit.campusflow.modules.resources.model.Resource;
 import com.sliit.campusflow.modules.resources.model.ResourceType;
 import com.sliit.campusflow.modules.resources.repository.ResourceRepository;
+import com.sliit.campusflow.infrastructure.storage.SupabaseStorageService;
 import com.sliit.campusflow.modules.resources.repository.ResourceTypeRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class ResourceService {
     private final ResourceRepository resourceRepository;
     private final ResourceTypeRepository resourceTypeRepository;
     private final ResourceMapper resourceMapper;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Cacheable(value = "resources", key = "#id")
     public ResourceResponse getResourceById(@NonNull UUID id) {
@@ -81,7 +83,7 @@ public class ResourceService {
                 predicates.add(cb.equal(root.get("resourceType").get("id"), typeId));
             }
 
-            if (status != null) {
+            if (status != null && !status.trim().isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), status));
             }
 
@@ -123,6 +125,18 @@ public class ResourceService {
         Resource resource = resourceMapper.toEntity(request);
         resource.setResourceType(resourceType);
 
+        if (resource.getImages() != null) {
+            List<String> processedImages = new ArrayList<>();
+            for (String img : resource.getImages()) {
+                if (img.startsWith("data:image")) {
+                    processedImages.add(supabaseStorageService.uploadBase64Image(img, "resources"));
+                } else {
+                    processedImages.add(img);
+                }
+            }
+            resource.setImages(processedImages);
+        }
+
         Resource savedResource = resourceRepository.save(Objects.requireNonNull(resource));
         log.info("Resource created successfully with id: {}", savedResource.getId());
 
@@ -144,6 +158,18 @@ public class ResourceService {
         }
 
         resourceMapper.updateEntity(request, existingResource);
+
+        if (existingResource.getImages() != null) {
+            List<String> processedImages = new ArrayList<>();
+            for (String img : existingResource.getImages()) {
+                if (img.startsWith("data:image")) {
+                    processedImages.add(supabaseStorageService.uploadBase64Image(img, "resources"));
+                } else {
+                    processedImages.add(img);
+                }
+            }
+            existingResource.setImages(processedImages);
+        }
 
         if (request.getResourceTypeId() != null) {
             ResourceType resourceType = resourceTypeRepository.findById(Objects.requireNonNull(request.getResourceTypeId()))

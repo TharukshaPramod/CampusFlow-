@@ -12,3 +12,19 @@ spring:
         "[format_sql]": true
   flyway:
     enabled: false
+  mail:
+    host: localhost
+    port: 2525
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            redirect-uri: http://localhost/login/oauth2/code/google
+
+app:
+  jwt:
+    secret: test-secret-key-test-secret-key-123456
+    expiration: 900000
