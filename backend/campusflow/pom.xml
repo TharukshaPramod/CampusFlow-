@@ -219,6 +219,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<mainClass>com.sliit.campusflow.CampusflowApplication</mainClass>
 					<jvmArguments>-Djava.net.preferIPv4Stack=true</jvmArguments>
 					<excludes>
 						<exclude>

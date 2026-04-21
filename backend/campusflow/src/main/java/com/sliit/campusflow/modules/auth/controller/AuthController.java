@@ -48,6 +48,7 @@ public class AuthController {
      * POST /api/auth/register
      * Open to everyone. Registers a new LOCAL user (role = USER).
      */
+    @SuppressWarnings("null")
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail().toLowerCase())) {
@@ -66,7 +67,9 @@ public class AuthController {
         if (roleOpt.isPresent()) {
             role = roleOpt.get();
         } else {
-            role = java.util.Objects.requireNonNull(roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular user").build()));
+            Role saved = roleRepository.save(
+                    Role.builder().name("ROLE_USER").description("Regular user").build());
+            role = java.util.Objects.requireNonNull(saved, "Failed to save ROLE_USER");
         }
         user.getRoles().add(role);
 
@@ -338,6 +341,7 @@ public class AuthController {
         ));
     }
 
+    @SuppressWarnings("null")
     @PostMapping("/accept-admin-invite")
     public ResponseEntity<?> acceptAdminInvite(@RequestBody Map<String, String> body) {
         String token = body.getOrDefault("token", "").trim();
@@ -379,7 +383,9 @@ public class AuthController {
         if (roleOpt.isPresent()) {
             role = roleOpt.get();
         } else {
-            role = java.util.Objects.requireNonNull(roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(finalRoleName).build()));
+            Role saved = roleRepository.save(
+                    Role.builder().name(finalRoleName).build());
+            role = java.util.Objects.requireNonNull(saved, "Failed to save role: " + finalRoleName);
         }
         user.getRoles().add(role);
         user.setActive(true);

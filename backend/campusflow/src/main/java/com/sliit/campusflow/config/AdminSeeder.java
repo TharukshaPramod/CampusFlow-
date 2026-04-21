@@ -45,14 +45,21 @@ public class AdminSeeder implements CommandLineRunner {
         }
     }
 
+    @SuppressWarnings("null")
     private SeedResult createAdminIfNotExists(String name, String email, String rawPassword) {
         String normalizedEmail = email.toLowerCase();
-        Role adminRole = roleRepository.findByName("ROLE_ADMIN")
-                .orElseGet(() -> java.util.Objects.requireNonNull(roleRepository.save(
-                        com.sliit.campusflow.modules.auth.model.Role.builder()
-                                .name("ROLE_ADMIN")
-                                .description("System Admin")
-                                .build())));
+        Role adminRole;
+        var adminRoleOpt = roleRepository.findByName("ROLE_ADMIN");
+        if (adminRoleOpt.isPresent()) {
+            adminRole = adminRoleOpt.get();
+        } else {
+            Role saved = roleRepository.save(
+                    Role.builder()
+                            .name("ROLE_ADMIN")
+                            .description("System Admin")
+                            .build());
+            adminRole = java.util.Objects.requireNonNull(saved, "Failed to save ROLE_ADMIN");
+        }
 
         var existingUser = userRepository.findByEmail(normalizedEmail);
 
