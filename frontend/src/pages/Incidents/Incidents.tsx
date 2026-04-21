@@ -1,23 +1,29 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Clock, CheckCircle2, AlertTriangle, ShieldAlert } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertCircle, Clock, CheckCircle2, AlertTriangle, ShieldAlert, Plus, Sparkles, MessageSquare } from "lucide-react";
 import { incidentService } from "../../services/api/incidents";
 import { useAuth } from "../../hooks/useAuth";
 import { Incident, IncidentPriority, IncidentStatus } from "../../types/incident";
 
-const priorityColors: Record<IncidentPriority, { bg: string; icon: JSX.Element; label: string }> = {
-  [IncidentPriority.LOW]: { bg: "bg-slate-100 text-slate-700", icon: <CheckCircle2 size={14} />, label: "Low Priority" },
-  [IncidentPriority.MEDIUM]: { bg: "bg-blue-100 text-blue-800", icon: <Clock size={14} />, label: "Medium Priority" },
-  [IncidentPriority.HIGH]: { bg: "bg-orange-100 text-orange-800", icon: <AlertTriangle size={14} />, label: "High Priority" },
-  [IncidentPriority.CRITICAL]: { bg: "bg-red-100 text-red-800 border border-red-200 shadow-sm", icon: <ShieldAlert size={14} />, label: "Critical Priority" },
+const priorityConfig: Record<IncidentPriority, { bg: string; icon: JSX.Element; gradient: string }> = {
+  [IncidentPriority.LOW]: { bg: "bg-slate-100 text-slate-700 border-slate-200", icon: <CheckCircle2 size={13} />, gradient: "from-slate-400 to-slate-500" },
+  [IncidentPriority.MEDIUM]: { bg: "bg-blue-50 text-blue-700 border-blue-200", icon: <Clock size={13} />, gradient: "from-blue-400 to-indigo-500" },
+  [IncidentPriority.HIGH]: { bg: "bg-orange-50 text-orange-700 border-orange-200", icon: <AlertTriangle size={13} />, gradient: "from-orange-400 to-amber-500" },
+  [IncidentPriority.CRITICAL]: { bg: "bg-red-50 text-red-700 border-red-200", icon: <ShieldAlert size={13} />, gradient: "from-red-500 to-rose-500" },
 };
 
-const statusColors: Record<IncidentStatus, string> = {
-  [IncidentStatus.OPEN]: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  [IncidentStatus.IN_PROGRESS]: "bg-blue-100 text-blue-800 border-blue-200",
-  [IncidentStatus.RESOLVED]: "bg-green-100 text-green-800 border-green-200",
-  [IncidentStatus.CLOSED]: "bg-slate-100 text-slate-600 border-slate-200",
-  [IncidentStatus.REJECTED]: "bg-red-100 text-red-800 border-red-200",
+const statusConfig: Record<IncidentStatus, { bg: string; dot: string; strip: string }> = {
+  [IncidentStatus.OPEN]: { bg: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500", strip: "from-amber-400 to-yellow-400" },
+  [IncidentStatus.IN_PROGRESS]: { bg: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500", strip: "from-blue-400 to-indigo-400" },
+  [IncidentStatus.RESOLVED]: { bg: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", strip: "from-emerald-400 to-teal-400" },
+  [IncidentStatus.CLOSED]: { bg: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400", strip: "from-slate-300 to-slate-400" },
+  [IncidentStatus.REJECTED]: { bg: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500", strip: "from-red-400 to-rose-400" },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
 };
 
 export default function Incidents() {
@@ -33,199 +39,193 @@ export default function Incidents() {
     try {
       setLoading(true);
       const data = await incidentService.getAllIncidents();
-      
-      // Sort: Open/Critical float to the top
       data.sort((a, b) => {
-         if (a.status === IncidentStatus.OPEN && b.status !== IncidentStatus.OPEN) return -1;
-         if (a.status !== IncidentStatus.OPEN && b.status === IncidentStatus.OPEN) return 1;
-         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (a.status === IncidentStatus.OPEN && b.status !== IncidentStatus.OPEN) return -1;
+        if (a.status !== IncidentStatus.OPEN && b.status === IncidentStatus.OPEN) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-
       setIncidents(data);
-    } catch {
-      setError("Failed to load incidents.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Failed to load incidents."); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchIncidents();
-  }, []);
+  useEffect(() => { fetchIncidents(); }, []);
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Permanently delete this ticket?")) {
-      try {
-        await incidentService.deleteIncident(id);
-        fetchIncidents();
-      } catch {
-        alert("Failed to delete incident.");
-      }
+      try { await incidentService.deleteIncident(id); fetchIncidents(); }
+      catch { alert("Failed to delete incident."); }
     }
   };
 
-  const calculateSLAWarning = (incident: Incident) => {
-    if (incident.status === IncidentStatus.RESOLVED || incident.status === IncidentStatus.CLOSED || incident.status === IncidentStatus.REJECTED) return null;
-    
-    const created = new Date(incident.createdAt).getTime();
-    const now = new Date().getTime();
-    const hoursOpen = (now - created) / (1000 * 60 * 60);
-
-    // Dynamic SLA bounded rules
-    if (incident.priority === IncidentPriority.CRITICAL && hoursOpen > 2 && incident.status === IncidentStatus.OPEN) {
-       return "SLA BREACHED: Over 2 hours response time";
-    }
-    if (incident.priority === IncidentPriority.HIGH && hoursOpen > 24) {
-       return "SLA WARNING: Over 24 hours open";
-    }
-    if (hoursOpen > 72) {
-       return "SLA WARNING: Ticket stale (>72 hours)";
-    }
+  const calculateSLAWarning = (inc: Incident) => {
+    if ([IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.REJECTED].includes(inc.status)) return null;
+    const hoursOpen = (Date.now() - new Date(inc.createdAt).getTime()) / (1000 * 60 * 60);
+    if (inc.priority === IncidentPriority.CRITICAL && hoursOpen > 2 && inc.status === IncidentStatus.OPEN) return "SLA BREACHED — Over 2h response";
+    if (inc.priority === IncidentPriority.HIGH && hoursOpen > 24) return "SLA WARNING — Over 24h open";
+    if (hoursOpen > 72) return "STALE — Over 72 hours open";
     return null;
   };
 
   return (
-    <section className="max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <AlertCircle className="text-slate-400" />
-            {isAdminOrTech ? "Incident Command Center" : "My IT/Maintenance Tickets"}
-          </h1>
-          <p className="text-slate-600 mt-1">
-            {isAdminOrTech ? "Monitor active campus incidents, enforce SLAs, and assign support staff." : "Track your reported issues and communicate with campus support."}
-          </p>
+    <section className="max-w-6xl mx-auto space-y-6 pb-12 px-4">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/20">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              {isAdminOrTech ? "Incident Command Center" : "My IT/Maintenance Tickets"}
+            </h1>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {isAdminOrTech ? "Monitor incidents, enforce SLAs, and assign support staff" : "Track your reported issues and communicate with support"}
+            </p>
+          </div>
         </div>
         <Link
           to="/incidents/new"
-          className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm transition"
+          className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm shadow-rose-500/20 hover:shadow-md transition-all"
         >
-          + Report Incident
+          <Plus className="w-4 h-4" /> Report Incident
         </Link>
-      </div>
+      </motion.div>
 
-      {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 font-medium text-sm">{error}</div>}
+      {error && <div className="p-4 bg-red-50 text-red-600 rounded-2xl border border-red-200 font-medium text-sm flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /> {error}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* Cards */}
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+      >
         {loading ? (
-          <div className="col-span-full p-12 text-center text-slate-500 font-medium">Loading tickets...</div>
+          [...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-pulse">
+              <div className="h-36 bg-slate-100" />
+              <div className="p-5 space-y-3">
+                <div className="flex justify-between"><div className="h-4 bg-slate-100 rounded-lg w-16" /><div className="h-4 bg-slate-100 rounded-full w-16" /></div>
+                <div className="h-5 bg-slate-100 rounded-lg w-3/4" />
+                <div className="h-10 bg-slate-50 rounded-lg" />
+              </div>
+            </div>
+          ))
         ) : incidents.length === 0 ? (
-          <div className="col-span-full bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-500">
-            No incidents found. The campus is running smoothly!
-          </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full bg-white p-16 text-center rounded-2xl border border-slate-200 shadow-sm">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
+              <Sparkles className="w-8 h-8 text-emerald-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">All clear!</h3>
+            <p className="text-slate-500 text-sm">No incidents found. The campus is running smoothly.</p>
+          </motion.div>
         ) : (
           incidents.map((inc) => {
             const warning = calculateSLAWarning(inc);
+            const sCfg = statusConfig[inc.status];
+            const pCfg = priorityConfig[inc.priority];
 
             return (
-              <div 
-                key={inc.id} 
-                className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition flex flex-col relative overflow-hidden"
+              <motion.div
+                key={inc.id}
+                variants={cardVariants}
+                whileHover={{ y: -4 }}
+                className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-slate-300/60 transition-all duration-300 flex flex-col overflow-hidden"
               >
-                {/* Visual Status Cap */}
-                <div className={`absolute top-0 left-0 w-full h-1.5 ${inc.status === IncidentStatus.OPEN ? 'bg-yellow-400' : inc.status === IncidentStatus.IN_PROGRESS ? 'bg-blue-400' : inc.status === IncidentStatus.REJECTED ? 'bg-red-400' : 'bg-slate-200'}`}></div>
+                {/* Top status strip */}
+                <div className={`h-1 bg-gradient-to-r ${sCfg.strip}`} />
 
+                {/* Image */}
                 {inc.attachments && inc.attachments.length > 0 && (
                   <div className="h-36 w-full overflow-hidden relative bg-slate-100">
                     {imageErrors[inc.attachments[0].id] ? (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
-                         <span className="font-medium">Image Not Public</span>
-                      </div>
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium">Image Not Public</div>
                     ) : (
-                      <img 
-                        src={inc.attachments[0].fileUrl} 
-                        alt="Incident Evidence" 
-                        onError={() => setImageErrors(prev => ({...prev, [inc.attachments[0].id]: true}))}
-                        className="w-full h-full object-cover transition duration-500" 
+                      <img
+                        src={inc.attachments[0].fileUrl}
+                        alt="Evidence"
+                        onError={() => setImageErrors(prev => ({ ...prev, [inc.attachments[0].id]: true }))}
+                        className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className="absolute bottom-2 right-2 flex gap-1">
-                      <span className="bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
-                         📎 {inc.attachments.length} Images
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-2 right-2">
+                      <span className="bg-black/40 backdrop-blur-sm text-white text-[10px] px-2.5 py-1 rounded-full font-medium">
+                        📎 {inc.attachments.length}
                       </span>
                     </div>
                   </div>
                 )}
 
-                <div className={`p-5 flex-1 flex flex-col ${!(inc.attachments && inc.attachments.length > 0) && "pt-6"}`}>
+                <div className={`p-5 flex-1 flex flex-col ${!(inc.attachments && inc.attachments.length > 0) ? "pt-5" : ""}`}>
+                  {/* Priority + Status */}
                   <div className="flex justify-between items-start mb-3">
-                    <span className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-md uppercase tracking-wide ${priorityColors[inc.priority].bg}`}>
-                       {priorityColors[inc.priority].icon} {inc.priority}
+                    <span className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider border ${pCfg.bg}`}>
+                      {pCfg.icon} {inc.priority}
                     </span>
-                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider border ${statusColors[inc.status]}`}>
+                    <span className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider border ${sCfg.bg}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${sCfg.dot}`} />
                       {inc.status}
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-slate-900 text-lg leading-tight line-clamp-1">
-                    {inc.title}
-                  </h3>
-                  
+                  <h3 className="font-bold text-slate-900 text-lg leading-tight line-clamp-1">{inc.title}</h3>
+
                   <div className="flex items-center justify-between mt-2">
-                     <p className="text-xs font-mono font-medium text-slate-500">{inc.ticketNumber}</p>
-                     <p className="text-xs text-slate-400">{inc.category}</p>
+                    <p className="text-xs font-mono font-medium text-slate-400">{inc.ticketNumber}</p>
+                    <p className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md">{inc.category}</p>
                   </div>
 
-                  <div className="text-sm text-slate-600 mt-4 line-clamp-2 pb-4 flex-1">
-                    {inc.description}
-                  </div>
+                  <div className="text-sm text-slate-600 mt-3 line-clamp-2 flex-1">{inc.description}</div>
 
-                  <div className="pt-4 flex flex-col gap-3">
-                     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
-                        <span className="text-xs text-slate-500 font-medium tracking-wide">
-                          💬 {inc.comments ? inc.comments.length : 0} Comments
+                  {/* SLA Warning */}
+                  {warning && (
+                    <div className="mt-3 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold px-3 py-2 rounded-xl uppercase tracking-wider">
+                      <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> {warning}
+                    </div>
+                  )}
+
+                  <div className="pt-4 mt-3 flex flex-col gap-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+                      <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5" /> {inc.comments ? inc.comments.length : 0} Comments
+                      </span>
+                      {inc.technicianName ? (
+                        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                          Tech: {inc.technicianName.split(' ')[0]}
                         </span>
-                        {inc.technicianName ? (
-                           <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
-                             Tech: {inc.technicianName.split(' ')[0]}
-                           </span>
-                        ) : (
-                           <span className="text-xs font-medium text-slate-400 italic px-2 py-1">
-                             Unassigned
-                           </span>
-                        )}
-                     </div>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-400 italic">Unassigned</span>
+                      )}
+                    </div>
 
-                     <div className="flex items-center gap-2 mt-2">
-                        <Link 
-                          to={`/incidents/${inc.id}`}
-                          className="flex-1 bg-primary text-white text-center py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary-dark transition"
-                        >
-                           Inspect Thread
-                        </Link>
-                        {inc.creatorId === user?.id && (
-                           <>
-                              <Link 
-                                to={`/incidents/${inc.id}/edit`}
-                                className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition"
-                                title="Edit Ticket"
-                              >
-                                Edit
-                              </Link>
-                              <button 
-                                onClick={(e) => { e.preventDefault(); handleDelete(inc.id); }}
-                                className="px-3 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition"
-                                title="Delete Ticket"
-                              >
-                                Delete
-                              </button>
-                           </>
-                        )}
-                     </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/incidents/${inc.id}`}
+                        className="flex-1 bg-gradient-to-r from-rose-500 to-orange-500 text-white text-center py-2.5 rounded-xl text-sm font-bold shadow-sm hover:from-rose-600 hover:to-orange-600 transition"
+                      >
+                        Inspect Thread
+                      </Link>
+                      {inc.creatorId === user?.id && (
+                        <>
+                          <Link to={`/incidents/${inc.id}/edit`} className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition" title="Edit">Edit</Link>
+                          <button onClick={(e) => { e.preventDefault(); handleDelete(inc.id); }} className="px-3 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition" title="Delete">Delete</button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {warning && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] rotate-12 bg-red-600 text-white text-[10px] font-bold text-center py-0.5 opacity-90 shadow-sm pointer-events-none uppercase tracking-widest whitespace-nowrap">
-                    {warning}
-                  </div>
-                )}
-              </div>
+              </motion.div>
             );
           })
         )}
-      </div>
+      </motion.div>
     </section>
   );
 }

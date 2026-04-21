@@ -216,8 +216,14 @@ export default function Login() {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="grid overflow-hidden rounded-3xl border border-slate-200/70 bg-white/90 shadow-2xl shadow-primary/10 backdrop-blur lg:grid-cols-[1.1fr_1fr]">
-          <div className="relative hidden flex-col justify-between bg-gradient-to-br from-primary via-primary-dark to-accent px-10 py-12 text-white lg:flex">
-            <div>
+          <div className="relative hidden flex-col justify-between bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 px-10 py-12 text-white lg:flex overflow-hidden">
+            {/* Floating particles */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-20 left-10 w-32 h-32 bg-white/5 rounded-full blur-2xl animate-pulse" />
+              <div className="absolute bottom-32 right-8 w-24 h-24 bg-cyan-300/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute top-1/2 left-1/2 w-40 h-40 bg-blue-400/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+            </div>
+            <div className="relative z-10">
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white/70">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-lg">🎓</span>
                 CampusFlow
@@ -233,11 +239,11 @@ export default function Login() {
             </div>
             <button
               type="button"
-              className="mt-10 w-fit rounded-full border border-white/40 px-6 py-2 text-sm font-semibold transition hover:bg-white/15"
+              className="relative z-10 mt-10 w-fit rounded-full border border-white/30 px-6 py-2 text-sm font-semibold transition hover:bg-white/15 hover:border-white/50"
             >
               View more
             </button>
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.12),transparent_35%,transparent_70%,rgba(255,255,255,0.12))]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.08),transparent_35%,transparent_70%,rgba(255,255,255,0.08))]" />
           </div>
 
           <div className="px-6 py-10 sm:px-10 sm:py-12">
