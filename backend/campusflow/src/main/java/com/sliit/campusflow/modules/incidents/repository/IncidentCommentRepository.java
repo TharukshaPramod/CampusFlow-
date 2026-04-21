@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface IncidentCommentRepository extends JpaRepository<IncidentComment, UUID> {
     List<IncidentComment> findByIncidentIdOrderByCreatedAtAsc(UUID incidentId);
+    long countByAuthorId(UUID authorId);
 }

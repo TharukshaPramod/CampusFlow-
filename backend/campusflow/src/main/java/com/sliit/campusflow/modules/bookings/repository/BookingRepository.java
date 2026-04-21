@@ -17,6 +17,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     // Retrieve all bookings for a specific user
     List<Booking> findByUserId(UUID userId);
 
+    long countByUserId(UUID userId);
+
     // Retrieve bookings explicitly by a status (useful for admin views)
     List<Booking> findByStatus(BookingStatus status);
 

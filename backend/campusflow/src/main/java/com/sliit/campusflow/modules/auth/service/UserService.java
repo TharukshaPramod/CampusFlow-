@@ -5,6 +5,9 @@ import com.sliit.campusflow.modules.auth.repository.EmailVerificationTokenReposi
 import com.sliit.campusflow.modules.auth.repository.PasswordResetTokenRepository;
 import com.sliit.campusflow.modules.auth.repository.RoleRepository;
 import com.sliit.campusflow.modules.auth.repository.UserRepository;
+import com.sliit.campusflow.modules.bookings.repository.BookingRepository;
+import com.sliit.campusflow.modules.incidents.repository.IncidentCommentRepository;
+import com.sliit.campusflow.modules.incidents.repository.IncidentRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +25,9 @@ public class UserService {
     @Autowired private EmailVerificationTokenRepository emailVerificationTokenRepository;
     @Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private BookingRepository bookingRepository;
+    @Autowired private IncidentRepository incidentRepository;
+    @Autowired private IncidentCommentRepository incidentCommentRepository;
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -113,6 +119,22 @@ public class UserService {
     @Transactional
     public void deleteUserByAdmin(UUID id) {
         User user = getUserById(id);
+
+        long bookingCount = bookingRepository.countByUserId(user.getId());
+        long createdIncidentCount = incidentRepository.countByCreatorId(user.getId());
+        long assignedIncidentCount = incidentRepository.countByTechnicianId(user.getId());
+        long incidentCommentCount = incidentCommentRepository.countByAuthorId(user.getId());
+
+        if (bookingCount > 0 || createdIncidentCount > 0 || assignedIncidentCount > 0 || incidentCommentCount > 0) {
+            throw new IllegalStateException(
+                    "Cannot delete user with linked records " +
+                    "(bookings=" + bookingCount +
+                    ", incidentsCreated=" + createdIncidentCount +
+                    ", incidentsAssigned=" + assignedIncidentCount +
+                    ", comments=" + incidentCommentCount +
+                    "). Deactivate the user instead.");
+        }
+
         emailVerificationTokenRepository.deleteByUserId(user.getId());
         passwordResetTokenRepository.deleteByUserId(user.getId());
         // Force child-row deletions before parent delete to satisfy FK constraints.

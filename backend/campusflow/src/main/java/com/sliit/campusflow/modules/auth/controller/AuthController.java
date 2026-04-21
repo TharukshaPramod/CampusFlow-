@@ -108,10 +108,16 @@ public class AuthController {
                     .body(Map.of("message", "Account is inactive"));
         }
 
-        u.setLastLogin(Instant.now());
-        userRepository.save(u);
-
         String token = jwtUtil.generateToken(u);
+
+        // Do not block successful authentication if audit timestamp update fails.
+        try {
+            u.setLastLogin(Instant.now());
+            userRepository.save(u);
+        } catch (Exception e) {
+            log.warn("Login succeeded but failed to persist lastLogin for user {}", u.getEmail(), e);
+        }
+
         return ResponseEntity.ok(Map.of(
             "token", token,
             "user", Map.of(
