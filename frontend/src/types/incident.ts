@@ -96,3 +96,16 @@ export interface IncidentStatusUpdate {
 export interface IncidentCommentRequest {
   content: string;
 }
+
+export interface IncidentAnalyticsResponse {
+  totalIncidents: number;
+  openIncidents: number;
+  inProgressIncidents: number;
+  resolvedIncidents: number;
+  rejectedIncidents: number;
+  closedIncidents: number;
+  statusDistribution: Record<string, number>;
+  priorityDistribution: Record<string, number>;
+  categoryDistribution: Record<string, number>;
+  averageResolutionTimeHours: number;
+}

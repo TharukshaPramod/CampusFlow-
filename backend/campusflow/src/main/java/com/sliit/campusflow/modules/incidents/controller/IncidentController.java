@@ -6,6 +6,8 @@ import com.sliit.campusflow.modules.incidents.service.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -50,6 +52,26 @@ public class IncidentController {
     public ResponseEntity<IncidentResponse> getIncident(@PathVariable UUID id) {
         // In real world, add owner check here. For simplicity, assume UI routes carefully.
         return ResponseEntity.ok(incidentService.getIncidentById(id));
+    }
+
+    @GetMapping("/analytics")
+    @Operation(summary = "Get global incident analytics")
+    public ResponseEntity<IncidentAnalyticsResponse> getAnalytics() {
+        return ResponseEntity.ok(incidentService.getAnalytics());
+    }
+
+    @GetMapping("/{id}/report/pdf")
+    @Operation(summary = "Download a PDF report for a specific incident")
+    public ResponseEntity<byte[]> downloadPdfReport(@PathVariable UUID id) {
+        byte[] pdfBytes = incidentService.generatePdfReport(id);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "Incident_" + id.toString() + "_Report.pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 
     @PatchMapping("/{id}/status")

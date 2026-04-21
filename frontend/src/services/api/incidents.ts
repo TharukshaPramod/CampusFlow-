@@ -7,7 +7,8 @@ import {
   IncidentCommentRequest,
   IncidentComment,
   IncidentAttachment,
-  IncidentAddAttachmentsRequest
+  IncidentAddAttachmentsRequest,
+  IncidentAnalyticsResponse
 } from "../../types/incident";
 
 export const incidentService = {
@@ -68,5 +69,34 @@ export const incidentService = {
 
   deleteAttachment: async (attachmentId: string): Promise<void> => {
     await apiClient.delete(`/v1/incidents/attachments/${attachmentId}`);
+  },
+
+  getAnalytics: async (): Promise<IncidentAnalyticsResponse> => {
+    const { data } = await apiClient.get<IncidentAnalyticsResponse>("/v1/incidents/analytics");
+    return data;
+  },
+
+  downloadPdfReport: async (id: string): Promise<void> => {
+    const response = await apiClient.get(`/v1/incidents/${id}/report/pdf`, {
+      responseType: 'blob', // Important for downloading files
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    // Extract filename from header if possible, or fallback
+    let fileName = `Incident_Report_${id}.pdf`;
+    const disposition = response.headers['content-disposition'];
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+        var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        var matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          fileName = matches[1].replace(/['"]/g, '');
+        }
+    }
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 };

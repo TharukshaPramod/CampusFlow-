@@ -15,6 +15,7 @@ import AdminResources from "./pages/Admin/AdminResources";
 import ResourceAnalytics from "./pages/Admin/ResourceAnalytics";
 import AdminBookings from "./pages/Admin/AdminBookings";
 import AdminIncidents from "./pages/Admin/AdminIncidents";
+import IncidentAnalytics from "./pages/Admin/IncidentAnalytics";
 import Profile from "./pages/Profile/Profile";
 import Login from "./pages/Auth/Login";
 import AuthCallback from "./pages/Auth/Callback";
@@ -104,6 +105,7 @@ function App() {
         <Route path="/admin/resource-analytics" element={<ResourceAnalytics />} />
         <Route path="/admin/bookings" element={<AdminBookings />} />
         <Route path="/admin/incidents" element={<AdminIncidents />} />
+        <Route path="/admin/incident-analytics" element={<IncidentAnalytics />} />
       </Route>
 
       <Route

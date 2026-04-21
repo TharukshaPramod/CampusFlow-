@@ -22,3 +22,8 @@ export async function inviteAdmin(payload: { name: string; email: string }) {
   const { data } = await apiClient.post("/auth/invite-admin", payload);
   return data;
 }
+
+export async function getTechnicians() {
+  const { data } = await apiClient.get("/users/technicians");
+  return data;
+}

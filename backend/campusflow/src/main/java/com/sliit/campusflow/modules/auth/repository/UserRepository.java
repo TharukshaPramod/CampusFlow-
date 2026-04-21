@@ -16,4 +16,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT DISTINCT u FROM User u JOIN u.roles r WHERE r.name = 'ROLE_ADMIN' OR r.name = 'ADMIN'")
     List<User> findAllAdmins();
+
+    @Query("SELECT DISTINCT u FROM User u JOIN u.roles r WHERE r.name IN ('ROLE_TECHNICIAN', 'ROLE_ADMIN', 'TECHNICIAN', 'ADMIN')")
+    List<User> findAssignableTechnicians();
 }

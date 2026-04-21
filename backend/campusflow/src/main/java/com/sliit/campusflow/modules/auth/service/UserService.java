@@ -33,6 +33,10 @@ public class UserService {
         return userRepository.findAll();
     }
 
+    public List<User> getAssignableTechnicians() {
+        return userRepository.findAssignableTechnicians();
+    }
+
     public User getUserById(UUID id) {
         return userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new NoSuchElementException("User not found"));

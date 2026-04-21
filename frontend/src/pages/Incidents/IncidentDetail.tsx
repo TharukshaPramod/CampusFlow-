@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Send, Camera, UserCircle2, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 import { incidentService } from "../../services/api/incidents";
+import { getTechnicians } from "../../services/api/users";
 import { useAuth } from "../../hooks/useAuth";
 import { Incident, IncidentStatus, IncidentStatusUpdate } from "../../types/incident";
+import { Download } from "lucide-react";
 
 const statusColors: Record<IncidentStatus, string> = {
   [IncidentStatus.OPEN]: "bg-yellow-100 text-yellow-800",
@@ -22,6 +24,10 @@ export default function IncidentDetail() {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [technicians, setTechnicians] = useState<{id: string, name: string}[]>([]);
+  const [selectedTech, setSelectedTech] = useState<string>("");
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const [newComment, setNewComment] = useState("");
   const [workingStatus, setWorkingStatus] = useState<IncidentStatus | "">("");
@@ -43,9 +49,20 @@ export default function IncidentDetail() {
     }
   };
 
+  const fetchTechs = async () => {
+    if (!isAdmin) return;
+    try {
+      const techs = await getTechnicians();
+      setTechnicians(techs);
+    } catch {
+      console.error("Failed to load technicians");
+    }
+  };
+
   useEffect(() => {
     fetchIncident();
-  }, [id]);
+    fetchTechs();
+  }, [id, isAdmin]);
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,13 +127,26 @@ export default function IncidentDetail() {
     }
   };
 
-  const handleAssignToMe = async () => {
-    if (!id || !user) return;
+  const handleAssignTechnician = async () => {
+    if (!id || !selectedTech) return;
     try {
-      await incidentService.assignTechnician(id, user.id);
+      await incidentService.assignTechnician(id, selectedTech);
+      setSelectedTech("");
       fetchIncident();
     } catch {
       alert("Failed to assign technician.");
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!id) return;
+    try {
+      setIsDownloading(true);
+      await incidentService.downloadPdfReport(id);
+    } catch {
+      alert("Failed to download PDF report.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -143,9 +173,18 @@ export default function IncidentDetail() {
                     <h1 className="text-2xl font-bold text-slate-800">{incident.title}</h1>
                     <p className="text-sm font-mono text-slate-500 mt-1">{incident.ticketNumber} • {new Date(incident.createdAt).toLocaleString()}</p>
                   </div>
-                  <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${statusColors[incident.status]}`}>
-                    {incident.status}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={handleDownloadPdf} 
+                      disabled={isDownloading}
+                      className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 transition disabled:opacity-50"
+                    >
+                      <Download size={16} /> {isDownloading ? "Generating..." : "Report"}
+                    </button>
+                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${statusColors[incident.status]}`}>
+                      {incident.status}
+                    </span>
+                  </div>
                </div>
                
                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-sm">
@@ -307,9 +346,25 @@ export default function IncidentDetail() {
                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
                  <p className="text-sm text-slate-600 mb-3">No technician assigned yet.</p>
                  {isAdmin && (
-                   <button onClick={handleAssignToMe} className="bg-slate-800 hover:bg-slate-900 text-white w-full py-2 rounded-lg text-sm font-semibold transition">
-                     Assign to Me
-                   </button>
+                   <div className="flex flex-col gap-2">
+                     <select 
+                       value={selectedTech}
+                       onChange={(e) => setSelectedTech(e.target.value)}
+                       className="w-full text-sm border border-slate-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-primary/20"
+                     >
+                       <option value="">-- Select Technician --</option>
+                       {technicians.map(t => (
+                         <option key={t.id} value={t.id}>{t.name}</option>
+                       ))}
+                     </select>
+                     <button 
+                       onClick={handleAssignTechnician} 
+                       disabled={!selectedTech}
+                       className="bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 disabled:text-slate-500 text-white w-full py-2 rounded-lg text-sm font-semibold transition"
+                     >
+                       Assign Selected
+                     </button>
+                   </div>
                  )}
                </div>
              )}

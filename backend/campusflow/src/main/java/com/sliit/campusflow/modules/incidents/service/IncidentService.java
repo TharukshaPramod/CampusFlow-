@@ -37,6 +37,7 @@ public class IncidentService {
     private final SupabaseStorageService storageService;
     private final IncidentMapper incidentMapper;
     private final NotificationService notificationService;
+    private final PdfReportService pdfReportService;
 
     private static final String INCIDENT_BUCKET = "incidents";
 
@@ -109,9 +110,59 @@ public class IncidentService {
     }
 
     public IncidentResponse getIncidentById(UUID id) {
+        Incident incident = getIncidentEntityById(id);
+        return enrichIncidentWithRelations(incident);
+    }
+
+    public Incident getIncidentEntityById(UUID id) {
+        return incidentRepository.findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident not found"));
+    }
+
+    public IncidentAnalyticsResponse getAnalytics() {
+        List<Incident> all = incidentRepository.findAll();
+        
+        long total = all.size();
+        long open = all.stream().filter(i -> i.getStatus() == IncidentStatus.OPEN).count();
+        long inProgress = all.stream().filter(i -> i.getStatus() == IncidentStatus.IN_PROGRESS).count();
+        long resolved = all.stream().filter(i -> i.getStatus() == IncidentStatus.RESOLVED).count();
+        long rejected = all.stream().filter(i -> i.getStatus() == IncidentStatus.REJECTED).count();
+        long closed = all.stream().filter(i -> i.getStatus() == IncidentStatus.CLOSED).count();
+
+        java.util.Map<String, Long> statusDist = all.stream()
+                .collect(Collectors.groupingBy(i -> i.getStatus().name(), Collectors.counting()));
+        
+        java.util.Map<String, Long> priorityDist = all.stream()
+                .collect(Collectors.groupingBy(i -> i.getPriority().name(), Collectors.counting()));
+        
+        java.util.Map<String, Long> categoryDist = all.stream()
+                .collect(Collectors.groupingBy(Incident::getCategory, Collectors.counting()));
+
+        // Calculate average resolution time in hours
+        double avgResTime = all.stream()
+                .filter(i -> i.getResolvedAt() != null && i.getCreatedAt() != null)
+                .mapToDouble(i -> java.time.Duration.between(i.getCreatedAt(), i.getResolvedAt()).toHours())
+                .average().orElse(0.0);
+
+        return IncidentAnalyticsResponse.builder()
+                .totalIncidents(total)
+                .openIncidents(open)
+                .inProgressIncidents(inProgress)
+                .resolvedIncidents(resolved)
+                .rejectedIncidents(rejected)
+                .closedIncidents(closed)
+                .statusDistribution(statusDist)
+                .priorityDistribution(priorityDist)
+                .categoryDistribution(categoryDist)
+                .averageResolutionTimeHours(Math.round(avgResTime * 10.0) / 10.0)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generatePdfReport(UUID id) {
         Incident incident = incidentRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident not found"));
-        return enrichIncidentWithRelations(incident);
+        return pdfReportService.generateIncidentReport(incident);
     }
 
     public IncidentResponse updateIncidentStatus(UUID id, IncidentStatusUpdate update, User currentUser) {

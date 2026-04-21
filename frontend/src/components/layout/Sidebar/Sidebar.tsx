@@ -14,6 +14,7 @@ const bookingLinks = [
 
 const incidentLinks = [
   { to: "/admin/incidents", label: "Incident Management", icon: AlertTriangle },
+  { to: "/admin/incident-analytics", label: "Incident Analytics", icon: BarChart2 },
 ];
 
 const systemLinks = [
