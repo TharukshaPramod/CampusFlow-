@@ -61,7 +61,9 @@ public class AdminSeeder implements CommandLineRunner {
             User user = existingUser.get();
             boolean changed = false;
 
-            if (!user.getRoles().contains(adminRole)) {
+            boolean hasAdminRole = user.getRoles().stream()
+                    .anyMatch(role -> "ROLE_ADMIN".equalsIgnoreCase(role.getName()));
+            if (!hasAdminRole) {
                 user.getRoles().add(adminRole);
                 changed = true;
             }
