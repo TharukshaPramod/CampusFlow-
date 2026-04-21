@@ -58,7 +58,7 @@ export default function Resources() {
 
   useEffect(() => {
     fetchResources();
-  }, []);
+  }, [filters]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

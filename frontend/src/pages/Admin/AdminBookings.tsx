@@ -75,6 +75,17 @@ export default function AdminBookings() {
     }
   };
 
+  const handleDeleteSingle = async (id: string, bookingNumber: string) => {
+    if (window.confirm(`Permanently delete booking ${bookingNumber}? This cannot be undone.`)) {
+      try {
+        await bookingService.deleteBooking(id);
+        fetchBookings();
+      } catch {
+        alert("Failed to delete booking.");
+      }
+    }
+  };
+
   const filteredBookings = filterStatus === "ALL" 
     ? bookings 
     : bookings.filter(b => b.status === filterStatus);
@@ -218,8 +229,17 @@ export default function AdminBookings() {
                         )}
 
                         {b.status !== BookingStatus.PENDING && (
-                           <div className="text-xs text-slate-400 font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                             Processed
+                           <div className="flex items-center gap-2">
+                             <div className="text-xs text-slate-400 font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                               Processed
+                             </div>
+                             <button
+                               onClick={() => handleDeleteSingle(b.id, b.bookingNumber)}
+                               className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-100"
+                               title="Delete this booking"
+                             >
+                               <Trash2 size={15} />
+                             </button>
                            </div>
                         )}
                       </div>

@@ -77,4 +77,13 @@ public class BookingController {
         bookingService.bulkDeleteBookings(user, timeRange);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a single booking by ID (Admin only)")
+    public ResponseEntity<Void> deleteBooking(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User user) {
+        bookingService.deleteBooking(id, user);
+        return ResponseEntity.ok().build();
+    }
 }

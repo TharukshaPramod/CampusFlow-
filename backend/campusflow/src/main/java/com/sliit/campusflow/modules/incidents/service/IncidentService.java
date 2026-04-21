@@ -174,6 +174,17 @@ public class IncidentService {
              throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the creator or an Admin can delete this incident");
         }
 
+        // Must purge child relations to avoid Foreign Key constraint violations
+        List<IncidentAttachment> attachments = attachmentRepository.findByIncidentId(incident.getId());
+        if (!attachments.isEmpty()) {
+            attachmentRepository.deleteAll(attachments);
+        }
+
+        List<IncidentComment> comments = commentRepository.findByIncidentIdOrderByCreatedAtAsc(incident.getId());
+        if (!comments.isEmpty()) {
+            commentRepository.deleteAll(comments);
+        }
+
         incidentRepository.delete(Objects.requireNonNull(incident));
     }
 

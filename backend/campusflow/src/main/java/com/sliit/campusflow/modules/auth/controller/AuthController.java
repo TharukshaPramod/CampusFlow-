@@ -28,7 +28,6 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/auth")
 @Slf4j
-@SuppressWarnings("null")
 public class AuthController {
 
     @Autowired private UserRepository userRepository;
@@ -67,7 +66,7 @@ public class AuthController {
         if (roleOpt.isPresent()) {
             role = roleOpt.get();
         } else {
-            role = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular user").build());
+            role = java.util.Objects.requireNonNull(roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name("ROLE_USER").description("Regular user").build()));
         }
         user.getRoles().add(role);
 
@@ -374,7 +373,7 @@ public class AuthController {
         if (roleOpt.isPresent()) {
             role = roleOpt.get();
         } else {
-            role = roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(finalRoleName).build());
+            role = java.util.Objects.requireNonNull(roleRepository.save(com.sliit.campusflow.modules.auth.model.Role.builder().name(finalRoleName).build()));
         }
         user.getRoles().add(role);
         user.setActive(true);

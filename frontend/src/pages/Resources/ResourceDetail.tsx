@@ -26,17 +26,30 @@ export default function ResourceDetail() {
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      resourceService.getById(id),
-      resourceService.getFeatures(id),
-      resourceService.getMaintenanceSchedules(id),
-    ])
-      .then(([res, feat, maint]) => {
+    const load = async () => {
+      try {
+        const res = await resourceService.getById(id);
         setResource(res);
+      } catch {
+        // resource not found handled below
+      }
+      // Features and Maintenance are optional sub-endpoints;
+      // gracefully degrade to empty arrays if they return 404.
+      try {
+        const feat = await resourceService.getFeatures(id);
         setFeatures(feat);
+      } catch {
+        setFeatures([]);
+      }
+      try {
+        const maint = await resourceService.getMaintenanceSchedules(id);
         setMaintenance(maint);
-      })
-      .finally(() => setLoading(false));
+      } catch {
+        setMaintenance([]);
+      }
+      setLoading(false);
+    };
+    load();
   }, [id]);
 
   const handleDelete = async () => {

@@ -81,6 +81,7 @@ function App() {
         <Route path="/resources/:id" element={<ResourceDetail />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/bookings/new" element={<BookingCreate />} />
+        <Route path="/bookings/:id/edit" element={<BookingCreate />} />
         <Route path="/incidents" element={<Incidents />} />
         <Route path="/incidents/new" element={<IncidentCreate />} />
         <Route path="/incidents/:id" element={<IncidentDetail />} />

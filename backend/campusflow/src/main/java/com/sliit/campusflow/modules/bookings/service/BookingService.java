@@ -223,4 +223,18 @@ public class BookingService {
             }
         }
     }
+
+    public void deleteBooking(UUID bookingId, User currentUser) {
+        Booking booking = bookingRepository.findById(java.util.Objects.requireNonNull(bookingId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_ADMIN") || r.getName().equals("ADMIN"));
+
+        // Admin can delete any booking; users can only delete their own
+        if (!isAdmin && !booking.getUser().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not authorized to delete this booking");
+        }
+
+        bookingRepository.delete(java.util.Objects.requireNonNull(booking));
+    }
 }

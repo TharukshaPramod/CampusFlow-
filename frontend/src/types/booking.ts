@@ -7,6 +7,7 @@ export enum BookingStatus {
 
 export interface Booking {
   id: string;
+  bookingNumber: string;
   resourceId: string;
   resourceName?: string;
   userId: string;

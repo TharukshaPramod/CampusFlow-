@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trash2, AlertTriangle, UserCircle2, Filter, Activity, Clock } from "lucide-react";
+import { Trash2, AlertTriangle, UserCircle2, Filter, Activity, Clock, Image as ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { incidentService } from "../../services/api/incidents";
 import { Incident, IncidentStatus, IncidentPriority } from "../../types/incident";

@@ -29,5 +29,9 @@ export const bookingService = {
 
   deleteBookings: async (timeRange: string): Promise<void> => {
     await apiClient.delete(`/v1/bookings/bulk`, { params: { timeRange } });
+  },
+
+  deleteBooking: async (id: string): Promise<void> => {
+    await apiClient.delete(`/v1/bookings/${id}`);
   }
 };

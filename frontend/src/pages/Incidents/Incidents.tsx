@@ -27,6 +27,7 @@ export default function Incidents() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const fetchIncidents = async () => {
     try {
@@ -51,6 +52,17 @@ export default function Incidents() {
   useEffect(() => {
     fetchIncidents();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Permanently delete this ticket?")) {
+      try {
+        await incidentService.deleteIncident(id);
+        fetchIncidents();
+      } catch {
+        alert("Failed to delete incident.");
+      }
+    }
+  };
 
   const calculateSLAWarning = (incident: Incident) => {
     if (incident.status === IncidentStatus.RESOLVED || incident.status === IncidentStatus.CLOSED || incident.status === IncidentStatus.REJECTED) return null;
@@ -106,46 +118,102 @@ export default function Incidents() {
             const warning = calculateSLAWarning(inc);
 
             return (
-              <Link 
-                to={`/incidents/${inc.id}`}
+              <div 
                 key={inc.id} 
-                className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md hover:border-slate-300 transition flex flex-col relative overflow-hidden"
+                className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition flex flex-col relative overflow-hidden"
               >
                 {/* Visual Status Cap */}
                 <div className={`absolute top-0 left-0 w-full h-1.5 ${inc.status === IncidentStatus.OPEN ? 'bg-yellow-400' : inc.status === IncidentStatus.IN_PROGRESS ? 'bg-blue-400' : inc.status === IncidentStatus.REJECTED ? 'bg-red-400' : 'bg-slate-200'}`}></div>
 
-                <div className="flex justify-between items-start mb-3 pt-2">
-                  <span className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-md uppercase tracking-wide ${priorityColors[inc.priority].bg}`}>
-                     {priorityColors[inc.priority].icon} {inc.priority}
-                  </span>
-                  <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider border ${statusColors[inc.status]}`}>
-                    {inc.status}
-                  </span>
-                </div>
-
-                <h3 className="font-bold text-slate-800 text-lg leading-tight line-clamp-1 group-hover:text-primary transition">{inc.title}</h3>
-                
-                <div className="flex items-center justify-between mt-2">
-                   <p className="text-xs font-mono font-medium text-slate-500">{inc.ticketNumber}</p>
-                   <p className="text-xs text-slate-400">{inc.category}</p>
-                </div>
-
-                <div className="text-sm text-slate-600 mt-4 line-clamp-2 pb-4 flex-1">
-                  {inc.description}
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                   <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
-                         {inc.creatorName ? inc.creatorName.substring(0, 2).toUpperCase() : '?'}
+                {inc.attachments && inc.attachments.length > 0 && (
+                  <div className="h-36 w-full overflow-hidden relative bg-slate-100">
+                    {imageErrors[inc.attachments[0].id] ? (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
+                         <span className="font-medium">Image Not Public</span>
                       </div>
-                      <span className="text-xs text-slate-500">Reported by {inc.creatorName || "System"}</span>
-                   </div>
-                   {inc.technicianName && (
-                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                        Tech: {inc.technicianName.split(' ')[0]}
+                    ) : (
+                      <img 
+                        src={inc.attachments[0].fileUrl} 
+                        alt="Incident Evidence" 
+                        onError={() => setImageErrors(prev => ({...prev, [inc.attachments[0].id]: true}))}
+                        className="w-full h-full object-cover transition duration-500" 
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <div className="absolute bottom-2 right-2 flex gap-1">
+                      <span className="bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                         📎 {inc.attachments.length} Images
                       </span>
-                   )}
+                    </div>
+                  </div>
+                )}
+
+                <div className={`p-5 flex-1 flex flex-col ${!(inc.attachments && inc.attachments.length > 0) && "pt-6"}`}>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-md uppercase tracking-wide ${priorityColors[inc.priority].bg}`}>
+                       {priorityColors[inc.priority].icon} {inc.priority}
+                    </span>
+                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider border ${statusColors[inc.status]}`}>
+                      {inc.status}
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-slate-900 text-lg leading-tight line-clamp-1">
+                    {inc.title}
+                  </h3>
+                  
+                  <div className="flex items-center justify-between mt-2">
+                     <p className="text-xs font-mono font-medium text-slate-500">{inc.ticketNumber}</p>
+                     <p className="text-xs text-slate-400">{inc.category}</p>
+                  </div>
+
+                  <div className="text-sm text-slate-600 mt-4 line-clamp-2 pb-4 flex-1">
+                    {inc.description}
+                  </div>
+
+                  <div className="pt-4 flex flex-col gap-3">
+                     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+                        <span className="text-xs text-slate-500 font-medium tracking-wide">
+                          💬 {inc.comments ? inc.comments.length : 0} Comments
+                        </span>
+                        {inc.technicianName ? (
+                           <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
+                             Tech: {inc.technicianName.split(' ')[0]}
+                           </span>
+                        ) : (
+                           <span className="text-xs font-medium text-slate-400 italic px-2 py-1">
+                             Unassigned
+                           </span>
+                        )}
+                     </div>
+
+                     <div className="flex items-center gap-2 mt-2">
+                        <Link 
+                          to={`/incidents/${inc.id}`}
+                          className="flex-1 bg-primary text-white text-center py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary-dark transition"
+                        >
+                           Inspect Thread
+                        </Link>
+                        {inc.creatorId === user?.id && (
+                           <>
+                              <Link 
+                                to={`/incidents/${inc.id}/edit`}
+                                className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition"
+                                title="Edit Ticket"
+                              >
+                                Edit
+                              </Link>
+                              <button 
+                                onClick={(e) => { e.preventDefault(); handleDelete(inc.id); }}
+                                className="px-3 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition"
+                                title="Delete Ticket"
+                              >
+                                Delete
+                              </button>
+                           </>
+                        )}
+                     </div>
+                  </div>
                 </div>
 
                 {warning && (
@@ -153,7 +221,7 @@ export default function Incidents() {
                     {warning}
                   </div>
                 )}
-              </Link>
+              </div>
             );
           })
         )}

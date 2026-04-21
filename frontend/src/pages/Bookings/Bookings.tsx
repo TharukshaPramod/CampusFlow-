@@ -78,12 +78,25 @@ function Bookings() {
     fetchBookings();
   }, []);
 
-  const handleStatusUpdate = async (id: string, status: BookingStatus) => {
-    try {
-      await bookingService.updateBookingStatus(id, { status });
-      fetchBookings();
-    } catch {
-      alert("Failed to update status. Please try again.");
+  const handleCancel = async (id: string) => {
+    if (window.confirm("Cancel this booking? It will be marked as cancelled.")) {
+      try {
+        await bookingService.updateBookingStatus(id, { status: BookingStatus.CANCELLED });
+        fetchBookings();
+      } catch {
+        alert("Failed to cancel booking. Please try again.");
+      }
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Permanently delete this booking? This cannot be undone.")) {
+      try {
+        await bookingService.deleteBooking(id);
+        fetchBookings();
+      } catch {
+        alert("Failed to delete booking.");
+      }
     }
   };
 
@@ -150,37 +163,15 @@ function Bookings() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                      <Clock size={12} /> Live Status
-                    </span>
-                    <LiveCountdown targetDate={startDate} />
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {isPending && (
-                      <>
-                        <Link
-                          to={`/bookings/${b.id}/edit`}
-                          className="p-2 text-slate-500 bg-slate-50 hover:text-primary hover:bg-primary/10 border border-slate-200 rounded-lg transition"
-                          title="Edit Booking"
-                        >
-                          <PenSquare size={16} />
-                        </Link>
-                        <button
-                          onClick={() => {
-                            if (window.confirm("Cancel this booking?")) {
-                              handleStatusUpdate(b.id, BookingStatus.CANCELLED);
-                            }
-                          }}
-                          className="p-2 text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition"
-                          title="Cancel Booking"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </>
-                    )}
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  {/* Live Countdown */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                        <Clock size={12} /> Starts In
+                      </span>
+                      <LiveCountdown targetDate={startDate} />
+                    </div>
 
                     {isApproved && (
                       <button
@@ -191,6 +182,44 @@ function Bookings() {
                       </button>
                     )}
                   </div>
+
+                  {/* Action Buttons */}
+                  {isPending && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Link
+                        to={`/bookings/${b.id}/edit`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-sm font-semibold transition"
+                      >
+                        <PenSquare size={15} /> Edit
+                      </Link>
+                      <button
+                        onClick={() => handleCancel(b.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-100 rounded-xl text-sm font-semibold transition"
+                      >
+                        <X size={15} /> Cancel
+                      </button>
+                      <button
+                        onClick={() => handleDelete(b.id)}
+                        className="py-2 px-3 text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl text-sm font-semibold transition"
+                        title="Permanently delete this booking"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* For done/cancelled bookings — allow cleanup */}
+                  {!isPending && !isApproved && (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={() => handleDelete(b.id)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-xl text-xs font-semibold transition"
+                        title="Remove from history"
+                      >
+                        <Trash2 size={14} /> Remove from History
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

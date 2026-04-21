@@ -12,6 +12,20 @@ export default function BookingCreate() {
 
   const isEditMode = Boolean(id);
 
+  // Backend may return dates as arrays [y,m,d,h,min,s] or ISO strings
+  const parseDateToInputValue = (dateVal: any): string => {
+    let d: Date;
+    if (Array.isArray(dateVal)) {
+      const [y, mo, day, h = 0, min = 0] = dateVal;
+      d = new Date(y, mo - 1, day, h, min);
+    } else {
+      d = new Date(dateVal);
+    }
+    // Format as "yyyy-MM-ddTHH:mm" for datetime-local input
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceId, setResourceId] = useState(initialResourceId);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
@@ -49,8 +63,8 @@ export default function BookingCreate() {
           const bookingData = await bookingService.getBookingById(id);
           setResourceId(bookingData.resourceId);
           setSelectedResource(rawResources.find((r) => r.id === bookingData.resourceId) || null);
-          setStartTime(bookingData.startTime.slice(0, 16));
-          setEndTime(bookingData.endTime.slice(0, 16));
+          setStartTime(parseDateToInputValue(bookingData.startTime));
+          setEndTime(parseDateToInputValue(bookingData.endTime));
           setPurpose(bookingData.purpose);
           setExpectedAttendees(bookingData.expectedAttendees || 1);
         }

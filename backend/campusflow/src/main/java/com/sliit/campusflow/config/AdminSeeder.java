@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-@SuppressWarnings("null")
 public class AdminSeeder implements CommandLineRunner {
 
     private enum SeedResult {
@@ -49,11 +48,11 @@ public class AdminSeeder implements CommandLineRunner {
     private SeedResult createAdminIfNotExists(String name, String email, String rawPassword) {
         String normalizedEmail = email.toLowerCase();
         Role adminRole = roleRepository.findByName("ROLE_ADMIN")
-                .orElseGet(() -> roleRepository.save(
+                .orElseGet(() -> java.util.Objects.requireNonNull(roleRepository.save(
                         com.sliit.campusflow.modules.auth.model.Role.builder()
                                 .name("ROLE_ADMIN")
                                 .description("System Admin")
-                                .build()));
+                                .build())));
 
         var existingUser = userRepository.findByEmail(normalizedEmail);
 
