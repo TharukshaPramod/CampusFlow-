@@ -47,8 +47,6 @@ export default function Login() {
     confirmPassword: '',
   });
 
-  if (user) return <Navigate to="/" replace />;
-
   useEffect(() => {
     const errorCode = searchParams.get('error');
     if (!errorCode) {
@@ -71,6 +69,8 @@ export default function Login() {
     next.delete('error');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
+
+  if (user) return <Navigate to="/" replace />;
 
   const handleGoogleLogin = () => {
     setOauthLoading(true);
