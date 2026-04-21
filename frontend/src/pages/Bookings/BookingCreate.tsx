@@ -138,7 +138,7 @@ export default function BookingCreate() {
   if (pageLoading) return <div className="p-8 text-center text-slate-500">Loading booking data...</div>;
 
   return (
-    <section className="max-w-2xl mx-auto space-y-6">
+    <section className="max-w-2xl mx-auto space-y-6 pt-4 px-4 pb-12">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
           {isEditMode ? "Modify Booking Request" : "Request a Booking"}

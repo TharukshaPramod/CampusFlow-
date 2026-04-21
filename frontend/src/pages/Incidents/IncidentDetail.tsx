@@ -158,7 +158,7 @@ export default function IncidentDetail() {
   const isCreator = incident.creatorId === user?.id;
 
   return (
-    <section className="max-w-6xl mx-auto pb-12 flex flex-col lg:flex-row gap-6">
+    <section className="max-w-6xl mx-auto pb-12 pt-4 px-4 flex flex-col lg:flex-row gap-6">
        
        {/* Main Thread Content */}
        <div className="flex-1 space-y-6">

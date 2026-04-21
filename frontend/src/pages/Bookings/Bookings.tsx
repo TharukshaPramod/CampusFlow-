@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { QrCode, PenSquare, Trash2, Clock, X, Printer, CalendarCheck, Plus, Sparkles } from "lucide-react";
+import { QrCode, PenSquare, Trash2, Clock, X, Printer, CalendarCheck, Plus, Sparkles, SlidersHorizontal, Search, RotateCcw } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { bookingService } from "../../services/api/bookings";
 import { Booking, BookingStatus } from "../../types/booking";
@@ -57,6 +57,11 @@ function Bookings() {
   const [error, setError] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Booking | null>(null);
 
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterSearch, setFilterSearch] = useState("");
+
   const fetchBookings = async () => {
     try { setLoading(true); setError(null); setBookings(await bookingService.getAllBookings()); }
     catch { setError("Failed to load bookings."); }
@@ -64,6 +69,26 @@ function Bookings() {
   };
 
   useEffect(() => { fetchBookings(); }, []);
+
+  // Client-side filtering
+  const filteredBookings = bookings.filter((b) => {
+    if (filterStatus && b.status !== filterStatus) return false;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      const matchesName = (b.resourceName || "").toLowerCase().includes(q);
+      const matchesPurpose = (b.purpose || "").toLowerCase().includes(q);
+      const matchesNumber = (b.bookingNumber || "").toLowerCase().includes(q);
+      if (!matchesName && !matchesPurpose && !matchesNumber) return false;
+    }
+    return true;
+  });
+
+  const activeFilterCount = [filterStatus, filterSearch].filter(Boolean).length;
+
+  const handleResetFilters = () => {
+    setFilterStatus("");
+    setFilterSearch("");
+  };
 
   const handleCancel = async (id: string) => {
     if (window.confirm("Cancel this booking?")) {
@@ -82,7 +107,7 @@ function Bookings() {
   const handlePrint = () => { window.print(); };
 
   return (
-    <section className="space-y-6 max-w-5xl mx-auto pb-12 px-4">
+    <section className="space-y-6 max-w-5xl mx-auto pb-12 pt-4 px-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -96,16 +121,81 @@ function Bookings() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Bookings</h1>
-            <p className="text-slate-500 text-sm mt-0.5">Manage your active reservations and passes</p>
+            <p className="text-slate-500 text-sm mt-0.5">Manage your {filteredBookings.length} reservation{filteredBookings.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
-        <Link
-          to="/bookings/new"
-          className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm shadow-violet-500/20 hover:shadow-md transition-all"
-        >
-          <Plus className="w-4 h-4" /> Request Booking
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+              showFilters ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-violet-500 text-white text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </button>
+          <Link
+            to="/bookings/new"
+            className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm shadow-violet-500/20 hover:shadow-md transition-all"
+          >
+            <Plus className="w-4 h-4" /> Request Booking
+          </Link>
+        </div>
       </motion.div>
+
+      {/* Collapsible Filter Bar */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Status</label>
+                <select
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-500/10 transition"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value={BookingStatus.PENDING}>Pending</option>
+                  <option value={BookingStatus.APPROVED}>Approved</option>
+                  <option value={BookingStatus.REJECTED}>Rejected</option>
+                  <option value={BookingStatus.CANCELLED}>Cancelled</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Resource, purpose, or booking #..."
+                    className="w-full pl-9 pr-3 border border-slate-200 rounded-xl py-2.5 text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-500/10 transition"
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleResetFilters}
+                className="flex items-center gap-2 border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {error && <div className="p-4 bg-red-50 text-red-600 rounded-2xl border border-red-200 font-medium text-sm flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /> {error}</div>}
 
@@ -126,19 +216,25 @@ function Bookings() {
               </div>
             </div>
           ))
-        ) : bookings.length === 0 ? (
+        ) : filteredBookings.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full bg-white p-16 text-center rounded-2xl border border-slate-200 shadow-sm">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-violet-50 flex items-center justify-center mb-4">
               <Sparkles className="w-8 h-8 text-violet-300" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">No bookings yet</h3>
-            <p className="text-slate-500 text-sm mb-6">Start by reserving a room, lab, or piece of equipment.</p>
-            <Link to="/bookings/new" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm">
-              <Plus className="w-4 h-4" /> Create First Booking
-            </Link>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">{activeFilterCount > 0 ? "No matching bookings" : "No bookings yet"}</h3>
+            <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 ? "Try adjusting your filters." : "Start by reserving a room, lab, or piece of equipment."}</p>
+            {activeFilterCount > 0 ? (
+              <button onClick={handleResetFilters} className="inline-flex items-center gap-2 border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">
+                <RotateCcw className="w-4 h-4" /> Clear Filters
+              </button>
+            ) : (
+              <Link to="/bookings/new" className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm">
+                <Plus className="w-4 h-4" /> Create First Booking
+              </Link>
+            )}
           </motion.div>
         ) : (
-          bookings.map((b) => {
+          filteredBookings.map((b) => {
             const startDate = parseDate(b.startTime);
             const endDate = parseDate(b.endTime);
             const isApproved = b.status === BookingStatus.APPROVED;

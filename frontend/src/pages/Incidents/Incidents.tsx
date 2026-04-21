@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, Clock, CheckCircle2, AlertTriangle, ShieldAlert, Plus, Sparkles, MessageSquare } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle2, AlertTriangle, ShieldAlert, Plus, Sparkles, MessageSquare, SlidersHorizontal, Search, RotateCcw } from "lucide-react";
 import { incidentService } from "../../services/api/incidents";
 import { useAuth } from "../../hooks/useAuth";
 import { Incident, IncidentPriority, IncidentStatus } from "../../types/incident";
@@ -35,6 +35,13 @@ export default function Incidents() {
   const [error, setError] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterPriority, setFilterPriority] = useState<string>("");
+  const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterSearch, setFilterSearch] = useState("");
+
   const fetchIncidents = async () => {
     try {
       setLoading(true);
@@ -50,6 +57,33 @@ export default function Incidents() {
   };
 
   useEffect(() => { fetchIncidents(); }, []);
+
+  // Derive unique categories from data
+  const categories = [...new Set(incidents.map(i => i.category).filter(Boolean))].sort();
+
+  // Client-side filtering
+  const filteredIncidents = incidents.filter((inc) => {
+    if (filterStatus && inc.status !== filterStatus) return false;
+    if (filterPriority && inc.priority !== filterPriority) return false;
+    if (filterCategory && inc.category !== filterCategory) return false;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      const matchesTitle = inc.title.toLowerCase().includes(q);
+      const matchesDesc = inc.description.toLowerCase().includes(q);
+      const matchesTicket = inc.ticketNumber.toLowerCase().includes(q);
+      if (!matchesTitle && !matchesDesc && !matchesTicket) return false;
+    }
+    return true;
+  });
+
+  const activeFilterCount = [filterStatus, filterPriority, filterCategory, filterSearch].filter(Boolean).length;
+
+  const handleResetFilters = () => {
+    setFilterStatus("");
+    setFilterPriority("");
+    setFilterCategory("");
+    setFilterSearch("");
+  };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Permanently delete this ticket?")) {
@@ -68,7 +102,7 @@ export default function Incidents() {
   };
 
   return (
-    <section className="max-w-6xl mx-auto space-y-6 pb-12 px-4">
+    <section className="max-w-6xl mx-auto space-y-6 pb-12 pt-4 px-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -85,17 +119,112 @@ export default function Incidents() {
               {isAdminOrTech ? "Incident Command Center" : "My IT/Maintenance Tickets"}
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">
-              {isAdminOrTech ? "Monitor incidents, enforce SLAs, and assign support staff" : "Track your reported issues and communicate with support"}
+              {filteredIncidents.length} ticket{filteredIncidents.length !== 1 ? 's' : ''} found
             </p>
           </div>
         </div>
-        <Link
-          to="/incidents/new"
-          className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm shadow-rose-500/20 hover:shadow-md transition-all"
-        >
-          <Plus className="w-4 h-4" /> Report Incident
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+              showFilters ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </button>
+          <Link
+            to="/incidents/new"
+            className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm shadow-rose-500/20 hover:shadow-md transition-all"
+          >
+            <Plus className="w-4 h-4" /> Report Incident
+          </Link>
+        </div>
       </motion.div>
+
+      {/* Collapsible Filter Bar */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Status</label>
+                <select
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-500/10 transition"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value={IncidentStatus.OPEN}>Open</option>
+                  <option value={IncidentStatus.IN_PROGRESS}>In Progress</option>
+                  <option value={IncidentStatus.RESOLVED}>Resolved</option>
+                  <option value={IncidentStatus.CLOSED}>Closed</option>
+                  <option value={IncidentStatus.REJECTED}>Rejected</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Priority</label>
+                <select
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-500/10 transition"
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                >
+                  <option value="">All Priorities</option>
+                  <option value={IncidentPriority.LOW}>Low</option>
+                  <option value={IncidentPriority.MEDIUM}>Medium</option>
+                  <option value={IncidentPriority.HIGH}>High</option>
+                  <option value={IncidentPriority.CRITICAL}>Critical</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Category</label>
+                <select
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-500/10 transition"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Title, description, or ticket #..."
+                    className="w-full pl-9 pr-3 border border-slate-200 rounded-xl py-2.5 text-sm text-slate-700 bg-slate-50 focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-500/10 transition"
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleResetFilters}
+                className="flex items-center gap-2 border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {error && <div className="p-4 bg-red-50 text-red-600 rounded-2xl border border-red-200 font-medium text-sm flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /> {error}</div>}
 
@@ -117,16 +246,21 @@ export default function Incidents() {
               </div>
             </div>
           ))
-        ) : incidents.length === 0 ? (
+        ) : filteredIncidents.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full bg-white p-16 text-center rounded-2xl border border-slate-200 shadow-sm">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
               <Sparkles className="w-8 h-8 text-emerald-400" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">All clear!</h3>
-            <p className="text-slate-500 text-sm">No incidents found. The campus is running smoothly.</p>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">{activeFilterCount > 0 ? "No matching tickets" : "All clear!"}</h3>
+            <p className="text-slate-500 text-sm mb-6">{activeFilterCount > 0 ? "Try adjusting your filters to find what you're looking for." : "No incidents found. The campus is running smoothly."}</p>
+            {activeFilterCount > 0 && (
+              <button onClick={handleResetFilters} className="inline-flex items-center gap-2 border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">
+                <RotateCcw className="w-4 h-4" /> Clear Filters
+              </button>
+            )}
           </motion.div>
         ) : (
-          incidents.map((inc) => {
+          filteredIncidents.map((inc) => {
             const warning = calculateSLAWarning(inc);
             const sCfg = statusConfig[inc.status];
             const pCfg = priorityConfig[inc.priority];

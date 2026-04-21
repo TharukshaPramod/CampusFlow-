@@ -150,7 +150,7 @@ export default function IncidentCreate() {
   };
 
   return (
-    <section className="max-w-3xl mx-auto space-y-6 pb-12">
+    <section className="max-w-3xl mx-auto space-y-6 pb-12 pt-4 px-4">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
           <AlertTriangle className="text-red-500" strokeWidth={2.5} />
