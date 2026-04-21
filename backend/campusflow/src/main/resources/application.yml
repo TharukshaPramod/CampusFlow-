@@ -12,9 +12,9 @@ spring:
       maximum-pool-size: 5
       minimum-idle: 2
       connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 840000
-      keepalive-time: 300000
+      idle-timeout: 180000
+      max-lifetime: 300000
+      keepalive-time: 120000
       connection-test-query: SELECT 1
       validation-timeout: 5000
       leak-detection-threshold: 60000
@@ -29,7 +29,6 @@ spring:
     properties:
       hibernate:
         '[format_sql]': true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         '[jdbc.lob.non_contextual_creation]': true
         '[default_schema]': public
     open-in-view: false
