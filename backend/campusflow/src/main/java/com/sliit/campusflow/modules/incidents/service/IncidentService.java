@@ -7,6 +7,7 @@ import com.sliit.campusflow.modules.incidents.dto.*;
 import com.sliit.campusflow.modules.incidents.mapper.IncidentMapper;
 import com.sliit.campusflow.modules.incidents.model.*;
 import com.sliit.campusflow.modules.incidents.repository.*;
+import com.sliit.campusflow.modules.notifications.service.NotificationService;
 import com.sliit.campusflow.modules.resources.model.Resource;
 import com.sliit.campusflow.modules.resources.repository.ResourceRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class IncidentService {
     private final ResourceRepository resourceRepository;
     private final SupabaseStorageService storageService;
     private final IncidentMapper incidentMapper;
+    private final NotificationService notificationService;
 
     private static final String INCIDENT_BUCKET = "incidents";
 
@@ -60,6 +62,15 @@ public class IncidentService {
         }
 
         final Incident savedIncident = incidentRepository.save(incident);
+
+        notificationService.notifyAdmins(
+            "TICKET_CREATED",
+            "New support ticket",
+            creator.getName() + " raised ticket " + savedIncident.getTicketNumber(),
+            savedIncident.getId(),
+            "INCIDENT",
+            "/admin/incidents"
+        );
 
         // Handle Attachments
         if (request.getAttachmentsBase64() != null && !request.getAttachmentsBase64().isEmpty()) {
@@ -135,6 +146,17 @@ public class IncidentService {
         }
 
         Incident saved = incidentRepository.save(incident);
+
+        notificationService.notifyUser(
+            saved.getCreator().getId(),
+            "TICKET_STATUS",
+            "Ticket status updated",
+            "Your ticket " + saved.getTicketNumber() + " is now " + saved.getStatus().name() + ".",
+            saved.getId(),
+            "INCIDENT",
+            "/incidents/" + saved.getId()
+        );
+
         return enrichIncidentWithRelations(saved);
     }
 
@@ -185,7 +207,19 @@ public class IncidentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Technician not found"));
 
         incident.setTechnician(technician);
-        return enrichIncidentWithRelations(incidentRepository.save(incident));
+        Incident saved = incidentRepository.save(incident);
+
+        notificationService.notifyUser(
+            saved.getCreator().getId(),
+            "TICKET_UPDATE",
+            "Technician assigned",
+            technician.getName() + " has been assigned to your ticket " + saved.getTicketNumber() + ".",
+            saved.getId(),
+            "INCIDENT",
+            "/incidents/" + saved.getId()
+        );
+
+        return enrichIncidentWithRelations(saved);
     }
 
     public IncidentCommentResponse addComment(UUID incidentId, UUID userId, IncidentCommentRequest request) {
@@ -199,6 +233,18 @@ public class IncidentService {
         comment.setIncident(incident);
         comment.setAuthor(author);
         comment.setContent(request.getContent());
+
+        if (!incident.getCreator().getId().equals(author.getId())) {
+            notificationService.notifyUser(
+                    incident.getCreator().getId(),
+                    "TICKET_UPDATE",
+                    "New comment on ticket",
+                    author.getName() + " commented on " + incident.getTicketNumber() + ".",
+                    incident.getId(),
+                    "INCIDENT",
+                    "/incidents/" + incident.getId()
+            );
+        }
 
         return incidentMapper.toCommentResponse(commentRepository.save(comment));
     }

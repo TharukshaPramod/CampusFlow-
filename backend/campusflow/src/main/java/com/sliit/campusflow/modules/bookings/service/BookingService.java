@@ -9,6 +9,7 @@ import com.sliit.campusflow.modules.bookings.mapper.BookingMapper;
 import com.sliit.campusflow.modules.bookings.model.Booking;
 import com.sliit.campusflow.modules.bookings.model.BookingStatus;
 import com.sliit.campusflow.modules.bookings.repository.BookingRepository;
+import com.sliit.campusflow.modules.notifications.service.NotificationService;
 import com.sliit.campusflow.modules.resources.model.Resource;
 import com.sliit.campusflow.modules.resources.repository.ResourceRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class BookingService {
     private final ResourceRepository resourceRepository;
     private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
+    private final NotificationService notificationService;
 
     public BookingResponse createBooking(UUID userId, BookingRequest request) {
         if (request.getStartTime().isBefore(java.time.LocalDateTime.now())) {
@@ -84,6 +86,15 @@ public class BookingService {
         booking.setStatus(BookingStatus.PENDING);
 
         booking = bookingRepository.save(booking);
+
+        notificationService.notifyAdmins(
+            "BOOKING_REQUEST",
+            "New booking request",
+            user.getName() + " requested " + resource.getName(),
+            booking.getId(),
+            "BOOKING",
+            "/admin/bookings"
+        );
 
         return bookingMapper.toResponse(booking);
     }
@@ -187,6 +198,20 @@ public class BookingService {
         }
 
         booking = bookingRepository.save(booking);
+
+        if (update.getStatus() == BookingStatus.APPROVED || update.getStatus() == BookingStatus.REJECTED) {
+            String statusWord = update.getStatus() == BookingStatus.APPROVED ? "approved" : "rejected";
+            notificationService.notifyUser(
+                    booking.getUser().getId(),
+                    "BOOKING_STATUS",
+                    "Booking " + statusWord,
+                    "Your booking for " + booking.getResource().getName() + " was " + statusWord + ".",
+                    booking.getId(),
+                    "BOOKING",
+                    "/bookings"
+            );
+        }
+
         return bookingMapper.toResponse(booking);
     }
 

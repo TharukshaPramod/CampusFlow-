@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { LogOut, User, Menu, X, Bell, Layers } from 'lucide-react';
+import { LogOut, User, Menu, X, Layers } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
+import { NotificationBell } from './NotificationBell';
 
 export const DashboardNavbar = () => {
   const { user, logout } = useAuth();
@@ -38,11 +39,7 @@ export const DashboardNavbar = () => {
               <Link to="/admin/incidents" className={`text-sm font-medium transition-colors ${getLinkStyle('/admin/incident')}`}>Support</Link>
               <Link to="/admin/users" className={`text-sm font-medium transition-colors ${getLinkStyle('/admin/user')}`}>System</Link>
             </nav>
-            {/* Notifications */}
-            <button className="relative p-2 text-slate-600 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <NotificationBell />
 
             {/* Profile Menu */}
             <div className="relative">
@@ -97,9 +94,7 @@ export const DashboardNavbar = () => {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-2">
-            <button className="p-2 text-slate-600 hover:text-primary hover:bg-slate-100 rounded-lg">
-              <Bell className="w-5 h-5" />
-            </button>
+            <NotificationBell />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-600 hover:text-primary hover:bg-slate-100"
