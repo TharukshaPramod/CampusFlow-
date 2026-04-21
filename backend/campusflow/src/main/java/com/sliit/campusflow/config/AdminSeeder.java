@@ -17,6 +17,7 @@ public class AdminSeeder implements CommandLineRunner {
 
     private enum SeedResult {
         CREATED,
+        UPDATED,
         SKIPPED
     }
 
@@ -35,6 +36,8 @@ public class AdminSeeder implements CommandLineRunner {
             SeedResult result = createAdminIfNotExists("System Admin", "tharuksha@gmail.com", "Admin@20");
             if (result == SeedResult.CREATED) {
                 log.info("AdminSeeder completed successfully: admin account created");
+            } else if (result == SeedResult.UPDATED) {
+                log.info("AdminSeeder completed successfully: admin account synced");
             } else {
                 log.info("AdminSeeder completed successfully: admin account already exists");
             }
@@ -45,18 +48,46 @@ public class AdminSeeder implements CommandLineRunner {
 
     private SeedResult createAdminIfNotExists(String name, String email, String rawPassword) {
         String normalizedEmail = email.toLowerCase();
-        var existingUser = userRepository.findByEmail(normalizedEmail);
-
-        if (existingUser.isPresent()) {
-            return SeedResult.SKIPPED;
-        }
-
         Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                 .orElseGet(() -> roleRepository.save(
                         com.sliit.campusflow.modules.auth.model.Role.builder()
                                 .name("ROLE_ADMIN")
                                 .description("System Admin")
                                 .build()));
+
+        var existingUser = userRepository.findByEmail(normalizedEmail);
+
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            boolean changed = false;
+
+            if (!user.getRoles().contains(adminRole)) {
+                user.getRoles().add(adminRole);
+                changed = true;
+            }
+
+            if (!user.isActive()) {
+                user.setActive(true);
+                changed = true;
+            }
+
+            if (!user.isEmailVerified()) {
+                user.setEmailVerified(true);
+                changed = true;
+            }
+
+            if (user.getPassword() == null || user.getPassword().isBlank()) {
+                user.setPassword(passwordEncoder.encode(rawPassword));
+                changed = true;
+            }
+
+            if (changed) {
+                userRepository.save(user);
+                return SeedResult.UPDATED;
+            }
+
+            return SeedResult.SKIPPED;
+        }
 
         User admin = new User();
         admin.setName(name);

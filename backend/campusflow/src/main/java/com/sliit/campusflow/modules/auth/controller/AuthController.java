@@ -92,13 +92,23 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         var user = userRepository.findByEmail(req.getEmail().toLowerCase());
-        
-        if (user.isEmpty() || !passwordEncoder.matches(req.getPassword(), user.get().getPassword())) {
+
+        if (user.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Invalid email or password"));
         }
 
         User u = user.get();
+        if (u.getPassword() == null || u.getPassword().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "This account uses Google sign-in. Use Google login or set a password."));
+        }
+
+        if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid email or password"));
+        }
+
         if (!u.isEmailVerified()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("message", "Email not verified"));
