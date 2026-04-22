@@ -90,7 +90,7 @@ spring:
 
 # Gemini AI Configuration
 gemini:
-  api-key: ${GEMINI_API_KEY:AIzaSyA3SJ0kX1cJb0I7TQhl-6cmp6GYnrn9YnU}
+  api-key: ${GEMINI_API_KEY}
   model: gemini-2.5-flash
   base-url: https://generativelanguage.googleapis.com/v1beta
 

@@ -46,3 +46,7 @@ hs_err_pid*
 .env
 .env.*
 !.env.example
+
+# Backend secrets
+backend/**/.env
+backend/**/.env.*
