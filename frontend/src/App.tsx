@@ -21,6 +21,7 @@ import Login from "./pages/Auth/Login";
 import AuthCallback from "./pages/Auth/Callback";
 import AcceptInvite from "./pages/Auth/AcceptInvite";
 import ResetPassword from "./pages/Auth/ResetPassword";
+import Contact from "./pages/Contact/Contact";
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { useAuth } from "./hooks/useAuth";
@@ -64,6 +65,7 @@ function App() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
