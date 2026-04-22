@@ -130,10 +130,31 @@ export default function IncidentCreate() {
     }
   };
 
+  const normalizeCategory = (raw: string): string => {
+    const upper = raw.toUpperCase().replace(/[\s_-]+/g, "_");
+    const validCategories = ["MAINTENANCE", "IT_SUPPORT", "PLUMBING", "HVAC", "OTHER"];
+    // Exact match
+    if (validCategories.includes(upper)) return upper;
+    // Keyword matching
+    if (/IT|TECH|SOFTWARE|HARDWARE|COMPUTER|PROJECTOR|NETWORK|AV|AUDIO|VIDEO|EQUIPMENT/.test(upper)) return "IT_SUPPORT";
+    if (/PLUMB|WATER|LEAK|PIPE|DRAIN|TOILET|SINK/.test(upper)) return "PLUMBING";
+    if (/HVAC|AIR|CONDITION|HEAT|COOL|VENTILAT|TEMPERATURE/.test(upper)) return "HVAC";
+    if (/MAINT|REPAIR|FIX|BROKEN|CLEAN|LIGHT|DOOR|WINDOW|ELECTRICAL/.test(upper)) return "MAINTENANCE";
+    return "OTHER";
+  };
+
+  const normalizePriority = (raw: string): IncidentPriority => {
+    const upper = raw.toUpperCase().trim();
+    if (upper.includes("CRITICAL") || upper.includes("EMERGENCY")) return IncidentPriority.CRITICAL;
+    if (upper.includes("HIGH") || upper.includes("URGENT")) return IncidentPriority.HIGH;
+    if (upper.includes("MEDIUM") || upper.includes("MODERATE")) return IncidentPriority.MEDIUM;
+    return IncidentPriority.LOW;
+  };
+
   const applyAiSuggestion = () => {
     if (!aiSuggestion) return;
-    setCategory(aiSuggestion.suggestedCategory);
-    setPriority(aiSuggestion.suggestedPriority as IncidentPriority);
+    setCategory(normalizeCategory(aiSuggestion.suggestedCategory));
+    setPriority(normalizePriority(aiSuggestion.suggestedPriority));
     setAiSuggestion(null);
   };
 

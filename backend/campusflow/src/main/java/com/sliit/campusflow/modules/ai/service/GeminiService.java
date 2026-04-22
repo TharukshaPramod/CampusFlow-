@@ -2,9 +2,9 @@ package com.sliit.campusflow.modules.ai.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sliit.campusflow.modules.ai.config.GeminiProperties;
 import com.sliit.campusflow.modules.ai.dto.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -25,14 +25,10 @@ public class GeminiService {
     private final String model;
     private final String baseUrl;
 
-    public GeminiService(
-            @Value("${gemini.api-key}") String apiKey,
-            @Value("${gemini.model:gemini-2.5-flash}") String model,
-            @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
-            ObjectMapper objectMapper) {
-        this.apiKey = apiKey;
-        this.model = model;
-        this.baseUrl = baseUrl;
+    public GeminiService(GeminiProperties props, ObjectMapper objectMapper) {
+        this.apiKey = props.getApiKey();
+        this.model = props.getModel();
+        this.baseUrl = props.getBaseUrl();
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
@@ -149,7 +145,7 @@ public class GeminiService {
                 ),
                 "generationConfig", Map.of(
                     "temperature", 0.3,
-                    "maxOutputTokens", 1024
+                    "maxOutputTokens", 4096
                 )
             );
 
@@ -163,22 +159,22 @@ public class GeminiService {
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
-            // Retry loop for rate limiting (429)
+            // Retry loop for rate limiting (429) and high demand (503)
             HttpResponse<String> httpResponse = null;
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
                 log.debug("Gemini response status: {} (attempt {})", httpResponse.statusCode(), attempt);
 
-                if (httpResponse.statusCode() == 429) {
+                if (httpResponse.statusCode() == 429 || httpResponse.statusCode() == 503) {
                     if (attempt < maxRetries) {
                         long waitMs = (long) Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-                        log.warn("Gemini rate limited (429). Retrying in {}ms (attempt {}/{})", waitMs, attempt, maxRetries);
+                        log.warn("Gemini service busy ({}). Retrying in {}ms (attempt {}/{})", httpResponse.statusCode(), waitMs, attempt, maxRetries);
                         Thread.sleep(waitMs);
                         continue;
                     }
-                    throw new RuntimeException("AI service is busy. Please wait a moment and try again.");
+                    throw new RuntimeException("AI service is busy right now. Please wait a moment and try again.");
                 }
-                break; // Not a 429, exit retry loop
+                break; // Not a 429 or 503, exit retry loop
             }
 
             if (httpResponse == null) {
