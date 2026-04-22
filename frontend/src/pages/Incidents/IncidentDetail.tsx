@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Send, Camera, UserCircle2, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
+import { Send, Camera, UserCircle2, ShieldCheck, CheckCircle2, XCircle, Sparkles, Loader2, Bot, FileText, Clock, AlertTriangle as TriangleAlert } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { incidentService } from "../../services/api/incidents";
+import { aiService, type AiResolutionResponse, type AiSummarizeResponse } from "../../services/api/ai";
 import { getTechnicians } from "../../services/api/users";
 import { useAuth } from "../../hooks/useAuth";
 import { Incident, IncidentStatus, IncidentStatusUpdate } from "../../types/incident";
@@ -36,6 +38,12 @@ export default function IncidentDetail() {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentContent, setEditingCommentContent] = useState("");
+
+  // AI State
+  const [aiResLoading, setAiResLoading] = useState(false);
+  const [aiResolution, setAiResolution] = useState<AiResolutionResponse | null>(null);
+  const [aiSumLoading, setAiSumLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<AiSummarizeResponse | null>(null);
 
   const fetchIncident = async () => {
     if (!id) return;
@@ -157,6 +165,48 @@ export default function IncidentDetail() {
   const iAmTechnician = incident.technicianId === user?.id;
   const isCreator = incident.creatorId === user?.id;
 
+  // AI Resolution handler
+  const handleAiResolution = async () => {
+    if (!incident) return;
+    try {
+      setAiResLoading(true);
+      const result = await aiService.suggestResolution({
+        title: incident.title,
+        description: incident.description,
+        category: incident.category,
+        priority: incident.priority,
+        location: incident.location,
+      });
+      setAiResolution(result);
+    } catch {
+      alert("AI resolution failed. Please try again.");
+    } finally {
+      setAiResLoading(false);
+    }
+  };
+
+  // AI Summarize handler
+  const handleAiSummarize = async () => {
+    if (!incident || !incident.comments) return;
+    try {
+      setAiSumLoading(true);
+      const result = await aiService.summarizeThread({
+        incidentTitle: incident.title,
+        incidentDescription: incident.description,
+        comments: incident.comments.map((c) => ({
+          author: c.authorName || "Unknown",
+          content: c.content,
+          timestamp: new Date(c.createdAt).toLocaleString(),
+        })),
+      });
+      setAiSummary(result);
+    } catch {
+      alert("AI summarization failed. Please try again.");
+    } finally {
+      setAiSumLoading(false);
+    }
+  };
+
   return (
     <section className="max-w-6xl mx-auto pb-12 pt-4 px-4 flex flex-col lg:flex-row gap-6">
        
@@ -258,9 +308,51 @@ export default function IncidentDetail() {
 
           {/* Comment Thread */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-             <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                <h3 className="font-bold text-slate-800 text-lg">Activity & Updates</h3>
+               {incident.comments && incident.comments.length >= 3 && (
+                 <button
+                   onClick={handleAiSummarize}
+                   disabled={aiSumLoading}
+                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-sm disabled:opacity-50"
+                 >
+                   {aiSumLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                   {aiSumLoading ? "Summarizing..." : "📋 AI Summarize"}
+                 </button>
+               )}
              </div>
+
+             {/* AI Summary Card */}
+             <AnimatePresence>
+               {aiSummary && (
+                 <motion.div
+                   initial={{ opacity: 0, height: 0 }}
+                   animate={{ opacity: 1, height: "auto" }}
+                   exit={{ opacity: 0, height: 0 }}
+                   className="border-b border-violet-100"
+                 >
+                   <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50">
+                     <div className="flex items-center gap-2 mb-2">
+                       <Sparkles className="w-4 h-4 text-violet-500" />
+                       <span className="text-sm font-bold text-violet-800">AI Thread Summary</span>
+                       <button onClick={() => setAiSummary(null)} className="ml-auto text-slate-400 hover:text-slate-600">
+                         <XCircle className="w-4 h-4" />
+                       </button>
+                     </div>
+                     <p className="text-sm text-slate-700 mb-3 bg-white p-3 rounded-lg border border-violet-100">{aiSummary.summary}</p>
+                     <div className="flex gap-3">
+                       <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider border ${
+                         aiSummary.sentiment === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' :
+                         aiSummary.sentiment === 'NEGATIVE' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                         aiSummary.sentiment === 'POSITIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                         'bg-slate-100 text-slate-600 border-slate-200'
+                       }`}>Sentiment: {aiSummary.sentiment}</span>
+                       <span className="text-[10px] px-2 py-1 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">Action: {aiSummary.actionRequired}</span>
+                     </div>
+                   </div>
+                 </motion.div>
+               )}
+             </AnimatePresence>
              
              <div className="p-6 space-y-6">
                 {incident.comments && incident.comments.length === 0 ? (
@@ -419,6 +511,64 @@ export default function IncidentDetail() {
               </div>
             </div>
           )}
+
+           {/* AI Resolution Assistant */}
+           {(isAdmin || iAmTechnician) && (
+             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+               <div className="p-5">
+                 <div className="flex items-center gap-2 mb-3">
+                   <Bot className="w-5 h-5 text-violet-500" />
+                   <h3 className="font-bold text-slate-800">AI Resolution Assistant</h3>
+                 </div>
+                 <p className="text-xs text-slate-500 mb-4">Get AI-powered step-by-step suggestions for resolving this incident.</p>
+                 <button
+                   onClick={handleAiResolution}
+                   disabled={aiResLoading}
+                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-sm shadow-violet-500/20"
+                 >
+                   {aiResLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                   {aiResLoading ? "Generating..." : "🤖 Get AI Suggestions"}
+                 </button>
+               </div>
+
+               <AnimatePresence>
+                 {aiResolution && (
+                   <motion.div
+                     initial={{ opacity: 0, height: 0 }}
+                     animate={{ opacity: 1, height: "auto" }}
+                     exit={{ opacity: 0, height: 0 }}
+                     className="border-t border-violet-100"
+                   >
+                     <div className="p-5 bg-gradient-to-b from-violet-50 to-white space-y-3">
+                       <div className="flex items-center justify-between">
+                         <span className="text-xs font-bold text-violet-700 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> AI Suggested Steps</span>
+                         <button onClick={() => setAiResolution(null)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-4 h-4" /></button>
+                       </div>
+                       <ol className="space-y-2">
+                         {aiResolution.steps.map((step, i) => (
+                           <li key={i} className="flex gap-2.5 text-sm text-slate-700 bg-white p-3 rounded-lg border border-violet-100">
+                             <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                             <span>{step}</span>
+                           </li>
+                         ))}
+                       </ol>
+                       <div className="flex gap-3 pt-1">
+                         <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                           <Clock className="w-3 h-3" /> {aiResolution.estimatedTime}
+                         </span>
+                       </div>
+                       {aiResolution.additionalNotes && (
+                         <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                           <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                           <p>{aiResolution.additionalNotes}</p>
+                         </div>
+                       )}
+                     </div>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+             </div>
+           )}
 
           {(isAdmin || isCreator) && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">

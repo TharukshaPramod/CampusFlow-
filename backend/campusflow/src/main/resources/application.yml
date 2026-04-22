@@ -128,3 +128,9 @@ supabase:
   anon-key: ${SUPABASE_ANON_KEY:}
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
   jwks-url: ${SUPABASE_JWKS_URL:}
+
+# Gemini AI Configuration
+gemini:
+  api-key: ${GEMINI_API_KEY:AIzaSyDfrPXJnNrsVcvolV13RkqtYkiwz09dNng}
+  model: gemini-2.5-flash
+  base-url: https://generativelanguage.googleapis.com/v1beta

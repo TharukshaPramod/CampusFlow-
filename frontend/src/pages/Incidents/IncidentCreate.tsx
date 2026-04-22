@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
-import { UploadCloud, X, AlertTriangle } from "lucide-react";
+import { UploadCloud, X, AlertTriangle, Sparkles, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { incidentService } from "../../services/api/incidents";
 import { resourceService } from "../../services/api/resourceService";
+import { aiService, type AiTriageResponse } from "../../services/api/ai";
 import type { Resource } from "../../types/resource";
 import { IncidentPriority, IncidentAttachment } from "../../types/incident";
 
@@ -29,6 +31,11 @@ export default function IncidentCreate() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // AI Triage state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AiTriageResponse | null>(null);
+  const [aiError, setAiError] = useState("");
 
   useEffect(() => {
     // Load resources
@@ -102,6 +109,32 @@ export default function IncidentCreate() {
     } catch {
       alert("Failed to delete attachment.");
     }
+  };
+
+  const handleAiSuggest = async () => {
+    if (!title.trim() && !description.trim()) {
+      setAiError("Please enter a title or description first so AI can analyze it.");
+      return;
+    }
+    try {
+      setAiLoading(true);
+      setAiError("");
+      setAiSuggestion(null);
+      const result = await aiService.triage({ title, description });
+      setAiSuggestion(result);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "AI analysis failed. Please try again in a moment.";
+      setAiError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const applyAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    setCategory(aiSuggestion.suggestedCategory);
+    setPriority(aiSuggestion.suggestedPriority as IncidentPriority);
+    setAiSuggestion(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -259,6 +292,64 @@ export default function IncidentCreate() {
                placeholder="Provide detailed information about the issue so our technicians can prepare correctly..."
                required
              />
+
+             {/* AI Suggest Button */}
+             <div className="mt-3 flex items-center gap-3">
+               <button
+                 type="button"
+                 onClick={handleAiSuggest}
+                 disabled={aiLoading || (!title.trim() && !description.trim())}
+                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-sm shadow-violet-500/20 hover:shadow-md"
+               >
+                 {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                 {aiLoading ? "Analyzing..." : "✨ AI Smart Suggest"}
+               </button>
+               {aiError && <p className="text-xs text-red-500 font-medium">{aiError}</p>}
+             </div>
+
+             {/* AI Suggestion Card */}
+             <AnimatePresence>
+               {aiSuggestion && (
+                 <motion.div
+                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                   className="mt-3 p-4 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 shadow-sm"
+                 >
+                   <div className="flex items-center gap-2 mb-3">
+                     <Sparkles className="w-4 h-4 text-violet-500" />
+                     <span className="text-sm font-bold text-violet-800">AI Recommendation</span>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3 mb-3">
+                     <div className="bg-white rounded-lg p-2.5 border border-violet-100">
+                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Category</p>
+                       <p className="text-sm font-bold text-slate-800">{aiSuggestion.suggestedCategory.replace(/_/g, ' ')}</p>
+                     </div>
+                     <div className="bg-white rounded-lg p-2.5 border border-violet-100">
+                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Priority</p>
+                       <p className={`text-sm font-bold ${
+                         aiSuggestion.suggestedPriority === 'CRITICAL' ? 'text-red-600' :
+                         aiSuggestion.suggestedPriority === 'HIGH' ? 'text-orange-600' :
+                         aiSuggestion.suggestedPriority === 'MEDIUM' ? 'text-blue-600' : 'text-slate-600'
+                       }`}>{aiSuggestion.suggestedPriority}</p>
+                     </div>
+                   </div>
+                   <p className="text-xs text-slate-600 mb-3 bg-white p-2 rounded-lg border border-violet-100">
+                     <span className="font-semibold">Reasoning:</span> {aiSuggestion.reasoning}
+                   </p>
+                   <div className="flex gap-2">
+                     <button type="button" onClick={applyAiSuggestion}
+                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition shadow-sm">
+                       <CheckCircle2 className="w-3.5 h-3.5" /> Apply Suggestion
+                     </button>
+                     <button type="button" onClick={() => setAiSuggestion(null)}
+                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 text-xs font-bold hover:bg-slate-50 transition">
+                       <XCircle className="w-3.5 h-3.5" /> Dismiss
+                     </button>
+                   </div>
+                 </motion.div>
+               )}
+             </AnimatePresence>
           </div>
 
           <div className="border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
