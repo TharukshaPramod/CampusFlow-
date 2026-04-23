@@ -22,6 +22,11 @@ export const incidentService = {
     return data;
   },
 
+  getIncidentsByResource: async (resourceId: string): Promise<Incident[]> => {
+    const { data } = await apiClient.get<Incident[]>(`/v1/incidents/resource/${resourceId}`);
+    return data;
+  },
+
   getIncidentById: async (id: string): Promise<Incident> => {
     const { data } = await apiClient.get<Incident>(`/v1/incidents/${id}`);
     return data;

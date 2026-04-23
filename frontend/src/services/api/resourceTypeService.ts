@@ -8,8 +8,9 @@ type PageResponse<T> = {
 export const resourceTypeService = {
 
   getAll: async (): Promise<ResourceType[]> => {
-    const { data } = await api.get<PageResponse<ResourceType>>('/v1/resource-types');
-    return data.content ?? [];
+    const { data } = await api.get<any>('/v1/resource-types');
+    // Handle both paginated and non-paginated responses
+    return (data.content || data) ?? [];
   },
 
   getById: async (id: string): Promise<ResourceType> => {
@@ -28,8 +29,13 @@ export const resourceTypeService = {
   },
 
   update: async (id: string, resourceType: ResourceTypeRequest): Promise<ResourceType> => {
-    const { data } = await api.put<ResourceType>(`/v1/resource-types/${id}`, resourceType);
-    return data;
+    try {
+      const { data } = await api.put<ResourceType>(`/v1/resource-types/${id}`, resourceType);
+      return data;
+    } catch (error: any) {
+      console.error('Update resource type error:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   delete: async (id: string): Promise<void> => {

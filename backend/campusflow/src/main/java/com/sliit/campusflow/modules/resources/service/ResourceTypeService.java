@@ -33,7 +33,7 @@ public class ResourceTypeService {
         log.debug("Fetching resource type by id: {}", safeId);
         return resourceTypeRepository.findById(safeId)
                 .map(resourceTypeMapper::toResponse)
-            .orElseThrow(() -> new RuntimeException("Resource type not found with id: " + safeId));
+                .orElseThrow(() -> new RuntimeException("Resource type not found with id: " + safeId));
     }
 
     @Cacheable(value = "resourceTypes", key = "#name")
@@ -64,7 +64,7 @@ public class ResourceTypeService {
                 .map(resourceTypeMapper::toResponse);
     }
 
-    @CacheEvict(value = {"resourceTypes", "resourceTypes-all"}, allEntries = true)
+    @CacheEvict(value = { "resourceTypes", "resourceTypes-all" }, allEntries = true)
     public ResourceTypeResponse createResourceType(ResourceTypeRequest request) {
         final ResourceTypeRequest safeRequest = Objects.requireNonNull(request, "request must not be null");
         log.debug("Creating new resource type: {}", safeRequest.getName());
@@ -74,47 +74,51 @@ public class ResourceTypeService {
         }
 
         ResourceType resourceType = Objects.requireNonNull(
-            resourceTypeMapper.toEntity(safeRequest),
-            "Mapped ResourceType must not be null"
-        );
+                resourceTypeMapper.toEntity(safeRequest),
+                "Mapped ResourceType must not be null");
         ResourceType savedResourceType = resourceTypeRepository.save(resourceType);
-        
+
         log.info("Resource type created successfully with id: {}", savedResourceType.getId());
         return resourceTypeMapper.toResponse(savedResourceType);
     }
 
-    @CacheEvict(value = {"resourceTypes", "resourceTypes-all"}, allEntries = true)
+    @CacheEvict(value = { "resourceTypes", "resourceTypes-all" }, allEntries = true)
     public ResourceTypeResponse updateResourceType(UUID id, ResourceTypeRequest request) {
         final UUID safeId = Objects.requireNonNull(id, "id must not be null");
         final ResourceTypeRequest safeRequest = Objects.requireNonNull(request, "request must not be null");
-        log.debug("Updating resource type with id: {}", safeId);
+        log.debug("Updating resource type with id: {} and request: {}", safeId, safeRequest);
 
         ResourceType existingResourceType = resourceTypeRepository.findById(safeId)
                 .orElseThrow(() -> new RuntimeException("Resource type not found with id: " + safeId));
 
         if (!existingResourceType.getName().equals(safeRequest.getName()) &&
-            resourceTypeRepository.existsByName(safeRequest.getName())) {
+                resourceTypeRepository.existsByName(safeRequest.getName())) {
             throw new RuntimeException("Resource type with name '" + safeRequest.getName() + "' already exists");
         }
 
-        resourceTypeMapper.updateEntity(safeRequest, existingResourceType);
-        ResourceType updatedResourceType = resourceTypeRepository.save(existingResourceType);
-        
-        log.info("Resource type updated successfully with id: {}", updatedResourceType.getId());
-        return resourceTypeMapper.toResponse(updatedResourceType);
+        try {
+            resourceTypeMapper.updateEntity(safeRequest, existingResourceType);
+            ResourceType updatedResourceType = resourceTypeRepository.save(existingResourceType);
+
+            log.info("Resource type updated successfully with id: {}", updatedResourceType.getId());
+            return resourceTypeMapper.toResponse(updatedResourceType);
+        } catch (Exception e) {
+            log.error("Error updating resource type with id: {}", safeId, e);
+            throw new RuntimeException("Failed to update resource type: " + e.getMessage(), e);
+        }
     }
 
-    @CacheEvict(value = {"resourceTypes", "resourceTypes-all"}, allEntries = true)
+    @CacheEvict(value = { "resourceTypes", "resourceTypes-all" }, allEntries = true)
     public void deleteResourceType(UUID id) {
         final UUID safeId = Objects.requireNonNull(id, "id must not be null");
         log.debug("Deleting resource type with id: {}", safeId);
 
         ResourceType resourceType = resourceTypeRepository.findById(safeId)
-            .orElseThrow(() -> new RuntimeException("Resource type not found with id: " + safeId));
+                .orElseThrow(() -> new RuntimeException("Resource type not found with id: " + safeId));
 
         if (resourceType.getResources() != null && !resourceType.getResources().isEmpty()) {
-            throw new RuntimeException("Cannot delete resource type that is in use by " + 
-                                       resourceType.getResources().size() + " resources");
+            throw new RuntimeException("Cannot delete resource type that is in use by " +
+                    resourceType.getResources().size() + " resources");
         }
 
         resourceTypeRepository.deleteById(safeId);

@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { resourceService } from "../../services/api/resourceService";
+import { incidentService } from "../../services/api/incidents";
+import { bookingService } from "../../services/api/bookings";
 import { useAuth } from "../../hooks/useAuth";
 import type { Resource } from "../../types/resource";
-import type { ResourceFeature } from "../../types/ResourceFeature";
 import type { ResourceMaintenance } from "../../types/ResourceMaintenance";
+import type { Incident } from "../../types/incident";
+import type { Booking } from "../../types/booking";
 
 const statusColors = {
   ACTIVE: "bg-green-100 text-green-800",
@@ -13,14 +16,22 @@ const statusColors = {
   INACTIVE: "bg-slate-100 text-slate-600",
 };
 
+const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const formatAvailableDays = (days?: number[]): string => {
+  if (!days || days.length === 0) return "—";
+  return days.map(day => dayNames[day - 1]).join(", ");
+};
+
 export default function ResourceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [resource, setResource] = useState<Resource | null>(null);
-  const [features, setFeatures] = useState<ResourceFeature[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [maintenance, setMaintenance] = useState<ResourceMaintenance[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"details" | "features" | "maintenance">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "bookings" | "maintenance">("details");
   const { user } = useAuth();
   const isAdmin = user?.roles?.includes("ADMIN") || user?.roles?.includes("ROLE_ADMIN");
 
@@ -36,16 +47,22 @@ export default function ResourceDetail() {
       // Features and Maintenance are optional sub-endpoints;
       // gracefully degrade to empty arrays if they return 404.
       try {
-        const feat = await resourceService.getFeatures(id);
-        setFeatures(feat);
+        const bookingList = await bookingService.getBookingsByResource(id);
+        setBookings(bookingList);
       } catch {
-        setFeatures([]);
+        setBookings([]);
       }
       try {
         const maint = await resourceService.getMaintenanceSchedules(id);
         setMaintenance(maint);
       } catch {
         setMaintenance([]);
+      }
+      try {
+        const incidentList = await incidentService.getIncidentsByResource(id);
+        setIncidents(incidentList);
+      } catch {
+        setIncidents([]);
       }
       setLoading(false);
     };
@@ -64,7 +81,7 @@ export default function ResourceDetail() {
     return <p className="p-8 text-red-500 text-sm">Resource not found.</p>;
 
   return (
-    <section className="max-w-4xl mx-auto px-4 py-8">
+    <section className="w-4/5 mx-auto px-4 py-8">
       {/* Back */}
       <Link
         to="/resources"
@@ -141,7 +158,7 @@ export default function ResourceDetail() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-4">
-        {(["details", "features", "maintenance"] as const).map((tab) => (
+        {(["details", "bookings", "maintenance"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -213,7 +230,7 @@ export default function ResourceDetail() {
             <div>
               <dt className="text-slate-500">Available Days</dt>
               <dd className="font-medium text-slate-800 mt-1">
-                {resource.availableDays?.join(", ") || "—"}
+                {formatAvailableDays(resource.availableDays)}
               </dd>
             </div>
             <div>
@@ -231,24 +248,43 @@ export default function ResourceDetail() {
           </dl>
         )}
 
-        {/* Features Tab */}
-        {activeTab === "features" && (
+        {/* Bookings Tab */}
+        {activeTab === "bookings" && (
           <div>
-            {features.length === 0 ? (
-              <p className="text-slate-500 text-sm">No features listed.</p>
+            {bookings.length === 0 ? (
+              <p className="text-slate-500 text-sm">No bookings for this resource.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-500 border-b border-slate-200">
-                    <th className="pb-2">Feature</th>
-                    <th className="pb-2">Value</th>
+                    <th className="pb-2">Booking #</th>
+                    <th className="pb-2">User</th>
+                    <th className="pb-2">Start</th>
+                    <th className="pb-2">End</th>
+                    <th className="pb-2">Purpose</th>
+                    <th className="pb-2">Attendees</th>
+                    <th className="pb-2">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {features.map((f) => (
-                    <tr key={f.id} className="border-b border-slate-100">
-                      <td className="py-2 text-slate-700">{f.featureName}</td>
-                      <td className="py-2 text-slate-600">{f.featureValue || "—"}</td>
+                  {bookings.map((booking) => (
+                    <tr key={booking.id} className="border-b border-slate-100">
+                      <td className="py-2 text-slate-700 font-medium">{booking.bookingNumber}</td>
+                      <td className="py-2 text-slate-600">{booking.userName || "N/A"}</td>
+                      <td className="py-2 text-slate-600">{booking.startTime}</td>
+                      <td className="py-2 text-slate-600">{booking.endTime}</td>
+                      <td className="py-2 text-slate-600">{booking.purpose}</td>
+                      <td className="py-2 text-slate-600">{booking.expectedAttendees}</td>
+                      <td className="py-2">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          booking.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                          booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                          booking.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -259,31 +295,73 @@ export default function ResourceDetail() {
 
         {/* Maintenance Tab */}
         {activeTab === "maintenance" && (
-          <div>
-            {maintenance.length === 0 ? (
-              <p className="text-slate-500 text-sm">No maintenance scheduled.</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {maintenance.map((m) => (
-                  <div
-                    key={m.id}
-                    className="border border-slate-200 rounded-lg p-4 text-sm"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-slate-800">
-                        {m.startDate} {m.endDate ? `→ ${m.endDate}` : ""}
-                      </span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
-                        {m.status}
-                      </span>
+          <div className="space-y-6">
+            {/* Maintenance Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Maintenance Schedule</h3>
+              {maintenance.length === 0 ? (
+                <p className="text-slate-500 text-sm">No maintenance scheduled.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {maintenance.map((m) => (
+                    <div
+                      key={m.id}
+                      className="border border-slate-200 rounded-lg p-4 text-sm"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-slate-800">
+                          {m.startDate} {m.endDate ? `→ ${m.endDate}` : ""}
+                        </span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+                          {m.status}
+                        </span>
+                      </div>
+                      {m.description && (
+                        <p className="text-slate-600">{m.description}</p>
+                      )}
                     </div>
-                    {m.description && (
-                      <p className="text-slate-600">{m.description}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Incidents Section */}
+            <div className="border-t border-slate-200 pt-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Reported Incidents</h3>
+              {incidents.length === 0 ? (
+                <p className="text-slate-500 text-sm">No incidents reported.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {incidents.map((incident) => (
+                    <div
+                      key={incident.id}
+                      className="border border-slate-200 rounded-lg p-4 text-sm"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <span className="font-medium text-slate-800">{incident.title}</span>
+                          <p className="text-xs text-slate-400 mt-1">{incident.createdAt}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          incident.status === 'RESOLVED' ? 'bg-green-100 text-green-700' :
+                          incident.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                          incident.status === 'OPEN' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {incident.status}
+                        </span>
+                      </div>
+                      {incident.description && (
+                        <p className="text-slate-600 mt-2">{incident.description}</p>
+                      )}
+                      {incident.creatorName && (
+                        <p className="text-xs text-slate-500 mt-2">Reported by: {incident.creatorName}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
