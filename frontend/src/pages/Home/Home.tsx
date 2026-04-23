@@ -443,7 +443,7 @@ function Home() {
                   to="/login"
                   className="group inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-xl text-lg font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  Start Now — It's Free <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  Start Now — It&apos;s Free <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
             </div>

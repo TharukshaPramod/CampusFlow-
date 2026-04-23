@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trash2, AlertTriangle, UserCircle2, Clock, Activity, SlidersHorizontal } from "lucide-react";
+import { Trash2, UserCircle2, Clock, Activity, SlidersHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { incidentService } from "../../services/api/incidents";
 import { Incident, IncidentStatus, IncidentPriority } from "../../types/incident";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, Check, Wrench, Hourglass, Circle, ArrowRight, TrendingUp, Calendar, AlertTriangle } from "lucide-react";
+import { Building2, Check, Hourglass, ArrowRight, TrendingUp, Calendar, AlertTriangle } from "lucide-react";
 import { analyticsService, type ResourceAnalytics } from "../../services/api/analyticsService";
 import { bookingService } from "../../services/api/bookings";
 import { incidentService } from "../../services/api/incidents";
@@ -168,7 +168,7 @@ function Dashboard() {
             <span className="text-sm font-semibold text-cyan-200 uppercase tracking-wider">Admin Dashboard</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold">Welcome back, Administrator</h1>
-          <p className="text-white/70 text-sm mt-1 max-w-lg">Here's what's happening across your campus today. Review pending actions and monitor system health.</p>
+          <p className="text-white/70 text-sm mt-1 max-w-lg">Here&apos;s what&apos;s happening across your campus today. Review pending actions and monitor system health.</p>
         </div>
       </motion.div>
 

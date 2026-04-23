@@ -70,7 +70,7 @@ const Contact = () => {
             <span className="text-sm font-medium tracking-wide uppercase">Get in Touch</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
-            We're Here to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 to-white">Help</span>
+            We&apos;re Here to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 to-white">Help</span>
           </h1>
           <p className="text-lg text-blue-50 max-w-2xl mx-auto">
             Have a question about CampusFlow? Need technical support? Or just want to provide feedback? Our team is ready to assist you.

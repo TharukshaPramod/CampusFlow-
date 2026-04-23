@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Box, Plus, SlidersHorizontal, RotateCcw, Search, Eye, Pencil, Trash2, MapPin, Users } from "lucide-react";
+import { Box, Plus, SlidersHorizontal, RotateCcw, Eye, Pencil, Trash2, MapPin, Users } from "lucide-react";
 import { resourceService } from "../../services/api/resourceService";
 import { resourceTypeService } from "../../services/api/resourceTypeService";
 import type { Resource, ResourceFilters, ResourceStatus } from "../../types/resource";
@@ -22,14 +22,14 @@ export default function AdminResources() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchResources = async () => {
+  const fetchResources = useCallback(async () => {
     try { setLoading(true); setError(null); setResources(await resourceService.getAll(filters)); }
     catch { setError("Failed to load resources."); }
     finally { setLoading(false); }
-  };
+  }, [filters]);
 
   useEffect(() => { resourceTypeService.getAll().then(setResourceTypes); }, []);
-  useEffect(() => { fetchResources(); }, [filters]);
+  useEffect(() => { fetchResources(); }, [fetchResources]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;

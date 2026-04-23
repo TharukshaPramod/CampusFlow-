@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Send, Camera, UserCircle2, ShieldCheck, CheckCircle2, XCircle, Sparkles, Loader2, Bot, FileText, Clock, AlertTriangle as TriangleAlert } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,7 +45,7 @@ export default function IncidentDetail() {
   const [aiSumLoading, setAiSumLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<AiSummarizeResponse | null>(null);
 
-  const fetchIncident = async () => {
+  const fetchIncident = useCallback(async () => {
     if (!id) return;
     try {
       const data = await incidentService.getIncidentById(id);
@@ -55,9 +55,9 @@ export default function IncidentDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchTechs = async () => {
+  const fetchTechs = useCallback(async () => {
     if (!isAdmin) return;
     try {
       const techs = await getTechnicians();
@@ -65,12 +65,12 @@ export default function IncidentDetail() {
     } catch {
       console.error("Failed to load technicians");
     }
-  };
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchIncident();
     fetchTechs();
-  }, [id, isAdmin]);
+  }, [fetchIncident, fetchTechs]);
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();

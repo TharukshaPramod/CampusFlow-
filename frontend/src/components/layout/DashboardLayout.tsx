@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import { useLocation } from "react-router-dom";
 import { DashboardNavbar } from "./Navbar/DashboardNavbar";
 import { Sidebar } from "./Sidebar/Sidebar";
 

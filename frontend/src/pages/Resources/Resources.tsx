@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, Search, RotateCcw, Users, MapPin, Plus, Sparkles, SlidersHorizontal } from "lucide-react";
@@ -37,7 +37,7 @@ export default function Resources() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchResources = async () => {
+  const fetchResources = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -48,7 +48,7 @@ export default function Resources() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     resourceTypeService.getAll().then(setResourceTypes);
@@ -56,7 +56,7 @@ export default function Resources() {
 
   useEffect(() => {
     fetchResources();
-  }, [filters]);
+  }, [fetchResources]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

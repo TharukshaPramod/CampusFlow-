@@ -55,7 +55,7 @@ export default function IncidentCreate() {
           setResourceId(incData.resourceId || "");
           setExistingAttachments(incData.attachments || []);
         }
-      } catch (err: any) {
+      } catch {
         setError("Failed to load initial data.");
       }
     };
