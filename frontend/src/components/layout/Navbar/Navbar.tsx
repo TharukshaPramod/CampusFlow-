@@ -41,7 +41,8 @@ export const Navbar = () => {
     { name: 'Home', path: '/' },
     { name: 'Resources', path: '/resources' },
     { name: 'Bookings', path: '/bookings' },
-    { name: 'Support', path: '/incidents' }
+    { name: 'Support', path: '/incidents' },
+    { name: 'Contact', path: '/contact' }
   ];
 
   const resolvedNavLinks = navLinks.map((link) => ({
