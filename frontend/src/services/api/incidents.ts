@@ -23,8 +23,18 @@ export const incidentService = {
   },
 
   getIncidentsByResource: async (resourceId: string): Promise<Incident[]> => {
-    const { data } = await apiClient.get<Incident[]>(`/v1/incidents/resource/${resourceId}`);
-    return data;
+    try {
+      const { data } = await apiClient.get<Incident[]>(`/v1/incidents/resource/${resourceId}`);
+      return data;
+    } catch (error: any) {
+      // Fallback for backends that do not expose a dedicated /resource/{id} incidents route.
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+
+      const { data } = await apiClient.get<Incident[]>('/v1/incidents');
+      return (data || []).filter((incident) => incident.resourceId === resourceId);
+    }
   },
 
   getIncidentById: async (id: string): Promise<Incident> => {
