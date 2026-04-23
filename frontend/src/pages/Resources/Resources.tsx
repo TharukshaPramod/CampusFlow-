@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, Search, RotateCcw, Users, MapPin, Plus, Sparkles, SlidersHorizontal } from "lucide-react";
 import { resourceService } from "../../services/api/resourceService";
@@ -27,6 +27,7 @@ const itemVariants = {
 
 export default function Resources() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.roles?.includes("ADMIN");
 
   const [resources, setResources] = useState<Resource[]>([]);
@@ -261,7 +262,8 @@ export default function Resources() {
                 layout
                 key={r.id}
                 whileHover={{ y: -6 }}
-                className="group bg-white rounded-2xl shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 border border-slate-200 hover:border-blue-200/50 overflow-hidden flex flex-col"
+                onClick={() => navigate(`/resources/${r.id}`)}
+                className="group bg-white rounded-2xl shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 border border-slate-200 hover:border-blue-200/50 overflow-hidden flex flex-col cursor-pointer"
               >
                 <div className="p-1.5">
                   <div className="h-36 bg-gradient-to-br from-slate-100 to-slate-50 rounded-xl overflow-hidden relative">

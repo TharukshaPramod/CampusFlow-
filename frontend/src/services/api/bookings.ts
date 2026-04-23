@@ -12,6 +12,17 @@ export const bookingService = {
     return data;
   },
 
+  getBookingsByResource: async (resourceId: string): Promise<Booking[]> => {
+    try {
+      const { data } = await apiClient.get<Booking[]>(`/v1/bookings/resource/${resourceId}`);
+      return data;
+    } catch {
+      // Fallback: fetch all bookings and filter client-side if endpoint doesn't exist
+      const { data } = await apiClient.get<Booking[]>("/v1/bookings");
+      return data.filter(booking => booking.resourceId === resourceId);
+    }
+  },
+
   getBookingById: async (id: string): Promise<Booking> => {
     const { data } = await apiClient.get<Booking>(`/v1/bookings/${id}`);
     return data;

@@ -41,6 +41,11 @@ export const resourceService = {
     return data;
   },
 
+  getByCode: async (code: string): Promise<Resource> => {
+    const { data } = await api.get<Resource>(`/v1/resources/code/${encodeURIComponent(code)}`);
+    return data;
+  },
+
   create: async (resource: ResourceRequest): Promise<Resource> => {
     const { data } = await api.post<Resource>('/v1/resources', resource);
     return data;

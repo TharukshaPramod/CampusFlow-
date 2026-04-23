@@ -32,6 +32,8 @@ const defaultForm: ResourceRequest = {
   requiresApproval: false,
 };
 
+type FormErrors = Partial<Record<keyof ResourceRequest | "availableTime" | "images", string>>;
+
 export default function ResourceCreate() {
   const { user } = useAuth();
   const { id } = useParams<{ id?: string }>();
@@ -42,6 +44,7 @@ export default function ResourceCreate() {
   const [form, setForm] = useState<ResourceRequest>(defaultForm);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [selectedImageName, setSelectedImageName] = useState<string>("");
@@ -54,6 +57,8 @@ export default function ResourceCreate() {
   });
   const [typeSaving, setTypeSaving] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
+  const [codeCheckState, setCodeCheckState] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const [normalizedCode, setNormalizedCode] = useState("");
 
   useEffect(() => {
     resourceTypeService
@@ -90,7 +95,7 @@ export default function ResourceCreate() {
       .catch(() => {
         setError("Failed to load resource details.");
       });
-  }, [id]);
+  }, [id, isEditing]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -101,8 +106,15 @@ export default function ResourceCreate() {
       setForm((f) => ({ ...f, [name]: checked }));
     } else if (name === "capacity") {
       setForm((f) => ({ ...f, capacity: Number(value) }));
+    } else if (name === "code") {
+      const normalized = value.toUpperCase().replace(/\s+/g, "").replace(/[^A-Z0-9-]/g, "");
+      setForm((f) => ({ ...f, code: normalized }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
+    }
+
+    if (formErrors[name as keyof FormErrors]) {
+      setFormErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -117,23 +129,56 @@ export default function ResourceCreate() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.resourceTypeId) {
-      setError("Please select a resource type.");
+
+    const validationErrors = validateForm(form);
+    if (codeCheckState === "taken") {
+      validationErrors.code = "This code is already used by another resource.";
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      setError("Please correct the highlighted fields.");
       return;
     }
 
+    try {
+      const existingResources = await resourceService.getAll();
+      const targetName = normalizeNameForCompare(form.name);
+      const duplicateByName = existingResources.find((resource) => {
+        const isSameResource = Boolean(isEditing && id && resource.id === id);
+        return !isSameResource && normalizeNameForCompare(resource.name) === targetName;
+      });
+
+      if (duplicateByName) {
+        setFormErrors((prev) => ({
+          ...prev,
+          name: "A resource with this name already exists.",
+        }));
+        setError("Please correct the highlighted fields.");
+        return;
+      }
+    } catch {
+      setError("Failed to validate resource name uniqueness. Please try again.");
+      return;
+    }
+
+    const payload = normalizePayload(form);
     setSaving(true);
     setError(null);
     try {
       if (isEditing && id) {
-        await resourceService.update(id, form);
+        await resourceService.update(id, payload);
         navigate(`/resources/${id}`);
       } else {
-        await resourceService.create(form);
+        await resourceService.create(payload);
         navigate('/resources');
       }
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to save resource. Please check all fields.";
+      const backendErrors = err?.response?.data?.errors;
+      if (backendErrors && typeof backendErrors === "object") {
+        setFormErrors((prev) => ({ ...prev, ...backendErrors }));
+      }
+      const message = err?.response?.data?.message || err?.message || "Failed to save resource. Please check all fields.";
       setError(message);
     } finally {
       setSaving(false);
@@ -149,6 +194,12 @@ export default function ResourceCreate() {
       return;
     }
 
+    const maxFileSize = 5 * 1024 * 1024;
+    if (file.size > maxFileSize) {
+      setError("Image size must be 5MB or less.");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const previewDataUrl = String(reader.result || "");
@@ -158,6 +209,7 @@ export default function ResourceCreate() {
         ...prev,
         images: [previewDataUrl],
       }));
+      setFormErrors((prev) => ({ ...prev, images: undefined }));
       setError(null);
     };
     reader.readAsDataURL(file);
@@ -166,6 +218,14 @@ export default function ResourceCreate() {
   const handleTypeCreate = async () => {
     if (!typeForm.name.trim() || !typeForm.category.trim()) {
       setTypeError("Type name and category are required.");
+      return;
+    }
+
+    const duplicateType = resourceTypes.some(
+      (rt) => rt.name.trim().toLowerCase() === typeForm.name.trim().toLowerCase()
+    );
+    if (duplicateType) {
+      setTypeError("A resource type with this name already exists.");
       return;
     }
 
@@ -178,12 +238,44 @@ export default function ResourceCreate() {
       setTypeForm({ name: "", category: "", description: "", icon: "" });
       setShowTypeForm(false);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to save resource type.";
+      const message = err?.response?.data?.message || err?.message || "Failed to save resource type.";
       setTypeError(message);
     } finally {
       setTypeSaving(false);
     }
   };
+
+  useEffect(() => {
+    const code = (form.code || "").trim();
+    setNormalizedCode(code);
+
+    if (!code) {
+      setCodeCheckState("idle");
+      return;
+    }
+
+    if (!/^[A-Z0-9-]{3,30}$/.test(code)) {
+      setCodeCheckState("idle");
+      return;
+    }
+
+    setCodeCheckState("checking");
+    const timer = setTimeout(async () => {
+      try {
+        const found = await resourceService.getByCode(code);
+        const isSameResource = Boolean(isEditing && id && found.id === id);
+        setCodeCheckState(isSameResource ? "available" : "taken");
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          setCodeCheckState("available");
+          return;
+        }
+        setCodeCheckState("idle");
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [form.code, isEditing, id]);
 
   if (!isAdmin) {
     return (
@@ -228,6 +320,7 @@ export default function ResourceCreate() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
               placeholder="e.g. Lab 201"
             />
+            {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
           </div>
 
           <div>
@@ -241,6 +334,17 @@ export default function ResourceCreate() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
               placeholder="e.g. LAB-201"
             />
+            {codeCheckState === "checking" && (
+              <p className="text-xs text-slate-500 mt-1">Checking code availability...</p>
+            )}
+            {codeCheckState === "available" && normalizedCode && (
+              <p className="text-xs text-emerald-600 mt-1">Code is available.</p>
+            )}
+            {(formErrors.code || codeCheckState === "taken") && (
+              <p className="text-xs text-red-500 mt-1">
+                {formErrors.code || "This code is already used by another resource."}
+              </p>
+            )}
           </div>
 
           <div>
@@ -273,6 +377,7 @@ export default function ResourceCreate() {
                 </option>
               ))}
             </select>
+            {formErrors.resourceTypeId && <p className="text-xs text-red-500 mt-1">{formErrors.resourceTypeId}</p>}
 
             {showTypeForm && (
               <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
@@ -349,6 +454,7 @@ export default function ResourceCreate() {
               <option value="MAINTENANCE">Maintenance</option>
               <option value="INACTIVE">Inactive</option>
             </select>
+            {formErrors.status && <p className="text-xs text-red-500 mt-1">{formErrors.status}</p>}
           </div>
 
           <div>
@@ -363,6 +469,7 @@ export default function ResourceCreate() {
               onChange={handleChange}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
             />
+            {formErrors.capacity && <p className="text-xs text-red-500 mt-1">{formErrors.capacity}</p>}
           </div>
         </div>
 
@@ -379,6 +486,7 @@ export default function ResourceCreate() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
               placeholder="e.g. Block A"
             />
+            {formErrors.building && <p className="text-xs text-red-500 mt-1">{formErrors.building}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -391,6 +499,7 @@ export default function ResourceCreate() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
               placeholder="e.g. 2nd Floor"
             />
+            {formErrors.floor && <p className="text-xs text-red-500 mt-1">{formErrors.floor}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -403,6 +512,7 @@ export default function ResourceCreate() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
               placeholder="e.g. Room 201"
             />
+            {formErrors.location && <p className="text-xs text-red-500 mt-1">{formErrors.location}</p>}
           </div>
         </div>
 
@@ -427,6 +537,7 @@ export default function ResourceCreate() {
               </button>
             ))}
           </div>
+          {formErrors.availableDays && <p className="text-xs text-red-500 mt-1">{formErrors.availableDays}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -454,6 +565,7 @@ export default function ResourceCreate() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
             />
           </div>
+          {formErrors.availableTime && <p className="text-xs text-red-500 mt-1">{formErrors.availableTime}</p>}
         </div>
 
         {/* Description */}
@@ -468,6 +580,7 @@ export default function ResourceCreate() {
             rows={3}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
           />
+          {formErrors.description && <p className="text-xs text-red-500 mt-1">{formErrors.description}</p>}
         </div>
 
         {/* Image Upload */}
@@ -499,6 +612,7 @@ export default function ResourceCreate() {
             </div>
           </div>
         </div>
+        {formErrors.images && <p className="text-xs text-red-500 mt-1">{formErrors.images}</p>}
 
         {/* Requires Approval */}
         <div className="flex items-center gap-2">
@@ -538,4 +652,103 @@ export default function ResourceCreate() {
       </form>
     </section>
   );
+}
+
+function normalizePayload(form: ResourceRequest): ResourceRequest {
+  const normalizeText = (value?: string) => {
+    const trimmed = value?.trim() || "";
+    return trimmed.length > 0 ? trimmed : undefined;
+  };
+
+  return {
+    ...form,
+    name: form.name.trim(),
+    code: normalizeText(form.code)?.toUpperCase(),
+    description: normalizeText(form.description),
+    location: normalizeText(form.location),
+    building: normalizeText(form.building),
+    floor: normalizeText(form.floor),
+    availableFrom: normalizeText(form.availableFrom),
+    availableTo: normalizeText(form.availableTo),
+    availableDays: [...new Set(form.availableDays || [])],
+    capacity: Number(form.capacity || 0),
+  };
+}
+
+function normalizeNameForCompare(name?: string): string {
+  return (name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function validateForm(form: ResourceRequest): FormErrors {
+  const errors: FormErrors = {};
+
+  const name = form.name?.trim() || "";
+  if (!name) {
+    errors.name = "Resource name is required.";
+  } else if (name.length < 3) {
+    errors.name = "Name must be at least 3 characters.";
+  } else if (name.length > 100) {
+    errors.name = "Name must be 100 characters or less.";
+  }
+
+  const code = form.code?.trim() || "";
+  if (!code) {
+    errors.code = "Resource code is required.";
+  } else if (!/^[A-Z0-9-]{3,30}$/.test(code)) {
+    errors.code = "Code must be 3-30 chars using A-Z, 0-9, and '-' only.";
+  }
+
+  if (!form.resourceTypeId?.trim()) {
+    errors.resourceTypeId = "Please select a resource type.";
+  }
+
+  if (!form.status?.trim()) {
+    errors.status = "Please select a status.";
+  }
+
+  if (!form.building?.trim()) {
+    errors.building = "Building is required.";
+  }
+
+  if (!form.floor?.trim()) {
+    errors.floor = "Floor is required.";
+  }
+
+  if (!form.location?.trim()) {
+    errors.location = "Location is required.";
+  }
+
+  const capacity = Number(form.capacity);
+  if (!Number.isFinite(capacity) || !Number.isInteger(capacity) || capacity < 1 || capacity > 10000) {
+    errors.capacity = "Capacity must be an integer between 1 and 10000.";
+  }
+
+  const description = form.description?.trim() || "";
+  if (description.length > 1000) {
+    errors.description = "Description must be 1000 characters or less.";
+  }
+
+  const hasFrom = Boolean(form.availableFrom?.trim());
+  const hasTo = Boolean(form.availableTo?.trim());
+  if (!hasFrom || !hasTo) {
+    errors.availableTime = "Available From and Available To are required.";
+  }
+  if (hasFrom && hasTo && form.availableFrom! >= form.availableTo!) {
+    errors.availableTime = "Available From must be earlier than Available To.";
+  }
+
+  const invalidDays = (form.availableDays || []).filter((day) => !Number.isInteger(day) || day < 1 || day > 7);
+  if ((form.availableDays || []).length === 0) {
+    errors.availableDays = "Please select at least one available day.";
+  } else if (invalidDays.length > 0) {
+    errors.availableDays = "Available days must be valid weekday values.";
+  }
+
+  const image = form.images?.[0]?.trim();
+  const isExistingImageReference = Boolean(image && (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("/") || image.startsWith("blob:")));
+  if (image && !image.startsWith("data:image/") && !isExistingImageReference) {
+    errors.images = "Image must be a valid image file.";
+  }
+
+  return errors;
 }

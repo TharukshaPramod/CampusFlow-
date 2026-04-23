@@ -9,6 +9,8 @@ const defaultForm: ResourceTypeRequest = {
   icon: "",
 };
 
+type FormErrors = Partial<Record<keyof ResourceTypeRequest, string>>;
+
 export default function ResourceTypes() {
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,7 @@ export default function ResourceTypes() {
   const [form, setForm] = useState<ResourceTypeRequest>(defaultForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const fetchResourceTypes = async () => {
     try {
@@ -43,6 +46,10 @@ export default function ResourceTypes() {
   ) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
+
+    if (formErrors[name as keyof FormErrors]) {
+      setFormErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleEdit = (rt: ResourceType) => {
@@ -55,6 +62,7 @@ export default function ResourceTypes() {
     });
     setShowForm(true);
     setFormError(null);
+    setFormErrors({});
   };
 
   const handleCancel = () => {
@@ -62,22 +70,33 @@ export default function ResourceTypes() {
     setEditingId(null);
     setForm(defaultForm);
     setFormError(null);
+    setFormErrors({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const payload = normalizeResourceTypePayload(form);
+    const validationErrors = validateResourceTypeForm(payload, resourceTypes, editingId);
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      setFormError("Please correct the highlighted fields.");
+      return;
+    }
+
     setSaving(true);
     setFormError(null);
+    setFormErrors({});
     try {
       if (editingId) {
-        await resourceTypeService.update(editingId, form);
+        await resourceTypeService.update(editingId, payload);
       } else {
-        await resourceTypeService.create(form);
+        await resourceTypeService.create(payload);
       }
       await fetchResourceTypes();
       handleCancel();
-    } catch {
-      setFormError("Failed to save resource type. Please check all fields.");
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to save resource type. Please check all fields.");
     } finally {
       setSaving(false);
     }
@@ -88,8 +107,8 @@ export default function ResourceTypes() {
     try {
       await resourceTypeService.delete(id);
       await fetchResourceTypes();
-    } catch {
-      setError("Failed to delete resource type.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to delete resource type.");
     }
   };
 
@@ -140,6 +159,7 @@ export default function ResourceTypes() {
                   placeholder="e.g. Lecture Hall"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
                 />
+                {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
               </div>
 
               <div>
@@ -158,6 +178,7 @@ export default function ResourceTypes() {
                   <option value="EQUIPMENT">Equipment</option>
                   <option value="FACILITY">Facility</option>
                 </select>
+                {formErrors.category && <p className="text-xs text-red-500 mt-1">{formErrors.category}</p>}
               </div>
 
               <div>
@@ -171,6 +192,7 @@ export default function ResourceTypes() {
                   placeholder="e.g. building"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
                 />
+                {formErrors.icon && <p className="text-xs text-red-500 mt-1">{formErrors.icon}</p>}
               </div>
 
               <div>
@@ -184,6 +206,7 @@ export default function ResourceTypes() {
                   placeholder="e.g. Large rooms for lectures"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700"
                 />
+                {formErrors.description && <p className="text-xs text-red-500 mt-1">{formErrors.description}</p>}
               </div>
             </div>
 
@@ -279,4 +302,66 @@ export default function ResourceTypes() {
       )}
     </section>
   );
+}
+
+function normalizeResourceTypePayload(form: ResourceTypeRequest): ResourceTypeRequest {
+  const normalizeText = (value?: string) => {
+    const trimmed = value?.trim() || "";
+    return trimmed.length > 0 ? trimmed : undefined;
+  };
+
+  return {
+    name: form.name.trim(),
+    category: form.category.trim().toUpperCase(),
+    description: normalizeText(form.description),
+    icon: normalizeText(form.icon),
+  };
+}
+
+function normalizeNameForCompare(name?: string): string {
+  return (name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function validateResourceTypeForm(
+  form: ResourceTypeRequest,
+  resourceTypes: ResourceType[],
+  editingId: string | null
+): FormErrors {
+  const errors: FormErrors = {};
+
+  const name = form.name?.trim() || "";
+  if (!name) {
+    errors.name = "Resource type name is required.";
+  } else if (name.length < 3) {
+    errors.name = "Name must be at least 3 characters.";
+  } else if (name.length > 100) {
+    errors.name = "Name must be 100 characters or less.";
+  }
+
+  const duplicateType = resourceTypes.find((rt) => {
+    const isSameType = Boolean(editingId && rt.id === editingId);
+    return !isSameType && normalizeNameForCompare(rt.name) === normalizeNameForCompare(name);
+  });
+  if (duplicateType) {
+    errors.name = "A resource type with this name already exists.";
+  }
+
+  const category = form.category?.trim().toUpperCase() || "";
+  if (!category) {
+    errors.category = "Category is required.";
+  } else if (!["ROOM", "EQUIPMENT", "FACILITY"].includes(category)) {
+    errors.category = "Please select a valid category.";
+  }
+
+  const description = form.description?.trim() || "";
+  if (description.length > 500) {
+    errors.description = "Description must be 500 characters or less.";
+  }
+
+  const icon = form.icon?.trim() || "";
+  if (icon.length > 100) {
+    errors.icon = "Icon must be 100 characters or less.";
+  }
+
+  return errors;
 }

@@ -34,7 +34,7 @@ export interface ResourceRequest {
   floor?: string;
   capacity?: number;
   status: ResourceStatus;
-  resourceTypeId?: string;
+  resourceTypeId: string;
   availableDays?: number[];
   availableFrom?: string;
   availableTo?: string;
