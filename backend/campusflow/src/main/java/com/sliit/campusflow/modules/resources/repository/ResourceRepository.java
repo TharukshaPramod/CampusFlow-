@@ -18,6 +18,8 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID>, JpaSp
 
     Optional<Resource> findByCode(String code);
 
+       Optional<Resource> findByCodeIgnoreCase(String code);
+
     List<Resource> findByStatus(String status);
 
     @Query("SELECT r FROM Resource r WHERE " +

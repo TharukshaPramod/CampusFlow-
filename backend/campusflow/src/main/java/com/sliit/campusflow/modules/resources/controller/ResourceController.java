@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -17,9 +18,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @RestController
@@ -78,17 +85,27 @@ public class ResourceController {
     @PostMapping
     @Operation(summary = "Create a new resource")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResourceResponse> createResource(@Valid @RequestBody ResourceRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.createResource(request));
+    public ResponseEntity<?> createResource(@Valid @RequestBody ResourceRequest request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.createResource(request));
+        } catch (IllegalArgumentException | IllegalStateException | DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing resource")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResourceResponse> updateResource(
+    public ResponseEntity<?> updateResource(
             @PathVariable @NonNull UUID id,
             @Valid @RequestBody ResourceRequest request) {
-        return ResponseEntity.ok(resourceService.updateResource(id, request));
+        try {
+            return ResponseEntity.ok(resourceService.updateResource(id, request));
+        } catch (NoSuchElementException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", ex.getMessage()));
+        } catch (IllegalArgumentException | IllegalStateException | DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @PatchMapping("/{id}/status")
@@ -106,5 +123,19 @@ public class ResourceController {
     public ResponseEntity<Void> deleteResource(@PathVariable @NonNull UUID id) {
         resourceService.deleteResource(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fields.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "Validation failed");
+        body.put("errors", fields);
+
+        return ResponseEntity.badRequest().body(body);
     }
 }

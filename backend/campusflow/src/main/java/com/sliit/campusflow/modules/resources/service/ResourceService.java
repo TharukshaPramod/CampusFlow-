@@ -105,12 +105,13 @@ public class ResourceService {
                 .map(resourceMapper::toResponse);
     }
 
-    @CacheEvict(value = {"resources", "resources-all"}, allEntries = true)
+    @CacheEvict(value = { "resources", "resources-all" }, allEntries = true)
     public ResourceResponse createResource(ResourceRequest request) {
+        normalizeRequest(request);
         log.debug("Creating new resource: {}", request.getName());
 
         // Check if code is unique if provided
-        if (request.getCode() != null && resourceRepository.findByCode(request.getCode()).isPresent()) {
+        if (request.getCode() != null && resourceRepository.findByCodeIgnoreCase(request.getCode()).isPresent()) {
             throw new RuntimeException("Resource with code " + request.getCode() + " already exists");
         }
 
@@ -143,16 +144,17 @@ public class ResourceService {
         return resourceMapper.toResponse(savedResource);
     }
 
-    @CacheEvict(value = {"resources", "resources-all"}, allEntries = true)
+    @CacheEvict(value = { "resources", "resources-all" }, allEntries = true)
     public ResourceResponse updateResource(@NonNull UUID id, ResourceRequest request) {
+        normalizeRequest(request);
         log.debug("Updating resource with id: {}", id);
 
         Resource existingResource = resourceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Resource not found with id: " + id));
 
         // Check code uniqueness if changed
-        if (request.getCode() != null && !request.getCode().equals(existingResource.getCode())) {
-            if (resourceRepository.findByCode(request.getCode()).isPresent()) {
+        if (request.getCode() != null && !request.getCode().equalsIgnoreCase(existingResource.getCode())) {
+            if (resourceRepository.findByCodeIgnoreCase(request.getCode()).isPresent()) {
                 throw new RuntimeException("Resource with code " + request.getCode() + " already exists");
             }
         }
@@ -172,7 +174,8 @@ public class ResourceService {
         }
 
         if (request.getResourceTypeId() != null) {
-            ResourceType resourceType = resourceTypeRepository.findById(Objects.requireNonNull(request.getResourceTypeId()))
+            ResourceType resourceType = resourceTypeRepository
+                    .findById(Objects.requireNonNull(request.getResourceTypeId()))
                     .orElseThrow(() -> new RuntimeException("Resource type not found"));
             existingResource.setResourceType(resourceType);
         }
@@ -183,7 +186,38 @@ public class ResourceService {
         return resourceMapper.toResponse(updatedResource);
     }
 
-    @CacheEvict(value = {"resources", "resources-all"}, allEntries = true)
+    private void normalizeRequest(ResourceRequest request) {
+        request.setName(trimRequired(request.getName()));
+        request.setCode(normalizeCode(request.getCode()));
+        request.setDescription(trimOptional(request.getDescription()));
+        request.setLocation(trimOptional(request.getLocation()));
+        request.setFloor(trimOptional(request.getFloor()));
+        request.setBuilding(trimOptional(request.getBuilding()));
+        request.setStatus(trimRequired(request.getStatus()));
+        request.setAvailableDays(
+                request.getAvailableDays() == null
+                        ? null
+                        : request.getAvailableDays().stream().distinct().toList());
+    }
+
+    private String trimRequired(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String trimOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeCode(String code) {
+        String trimmed = trimOptional(code);
+        return trimmed == null ? null : trimmed.toUpperCase();
+    }
+
+    @CacheEvict(value = { "resources", "resources-all" }, allEntries = true)
     public void deleteResource(@NonNull UUID id) {
         log.debug("Deleting resource with id: {}", id);
 
@@ -212,7 +246,7 @@ public class ResourceService {
                 .toList();
     }
 
-    @CacheEvict(value = {"resources", "resources-all"}, allEntries = true)
+    @CacheEvict(value = { "resources", "resources-all" }, allEntries = true)
     public ResourceResponse updateResourceStatus(@NonNull UUID id, String status) {
         log.debug("Updating resource status - id: {}, status: {}", id, status);
 
