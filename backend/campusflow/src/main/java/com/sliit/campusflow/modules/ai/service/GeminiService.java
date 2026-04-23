@@ -132,6 +132,22 @@ public class GeminiService {
     //  Internal helpers
     // ──────────────────────────────────────────────────────────────
 
+    /**
+     * Feature 4: Chatbot
+     */
+    public AiChatResponse chatWithBot(AiChatRequest request) {
+        String prompt = String.format("""
+            You are CampusBot, a friendly and helpful AI assistant for CampusFlow, a university campus management system.
+            Your job is to answer user questions about the university, facilities, bookings, and incident reporting.
+            Keep your answers concise, friendly, and helpful. Format your response cleanly.
+
+            User message: %s
+            """, sanitize(request.getMessage()));
+
+        String response = callGemini(prompt);
+        return AiChatResponse.builder().response(response).build();
+    }
+
     private String callGemini(String prompt) {
         String fullUrl = baseUrl + "/models/" + model + ":generateContent?key=" + apiKey;
         int maxRetries = 3;

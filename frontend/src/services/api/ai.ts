@@ -52,4 +52,9 @@ export const aiService = {
     const { data } = await apiClient.post<AiSummarizeResponse>("/v1/ai/summarize", request);
     return data;
   },
+
+  chatWithBot: async (message: string): Promise<{ response: string }> => {
+    const { data } = await apiClient.post<{ response: string }>('/v1/ai/chat', { message });
+    return data;
+  }
 };

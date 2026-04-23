@@ -6,8 +6,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
 
 import java.util.Map;
 
@@ -21,15 +24,23 @@ public class GeminiController {
 
     private final GeminiService geminiService;
 
+    private ResponseEntity<?> handleError(Exception e, String context) {
+        log.error("{} failed: {}", context, e.getMessage());
+        if (e.getMessage() != null && e.getMessage().contains("busy")) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", e.getMessage()));
+        }
+        return ResponseEntity.internalServerError()
+                .body(Map.of("message", context + " failed: " + e.getMessage()));
+    }
+
     @PostMapping("/triage")
     @Operation(summary = "AI Smart Triage — suggest category and priority for an incident")
     public ResponseEntity<?> triageIncident(@RequestBody AiTriageRequest request) {
         try {
             return ResponseEntity.ok(geminiService.triageIncident(request));
         } catch (Exception e) {
-            log.error("AI triage failed: {}", e.getMessage());
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("message", "AI triage failed: " + e.getMessage()));
+            return handleError(e, "AI triage");
         }
     }
 
@@ -39,9 +50,7 @@ public class GeminiController {
         try {
             return ResponseEntity.ok(geminiService.suggestResolution(request));
         } catch (Exception e) {
-            log.error("AI resolution failed: {}", e.getMessage());
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("message", "AI resolution failed: " + e.getMessage()));
+            return handleError(e, "AI resolution");
         }
     }
 
@@ -51,9 +60,17 @@ public class GeminiController {
         try {
             return ResponseEntity.ok(geminiService.summarizeThread(request));
         } catch (Exception e) {
-            log.error("AI summarization failed: {}", e.getMessage());
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("message", "AI summarization failed: " + e.getMessage()));
+            return handleError(e, "AI summarization");
+        }
+    }
+
+    @PostMapping("/chat")
+    public ResponseEntity<?> chatWithBot(@Valid @RequestBody AiChatRequest request) {
+        try {
+            return ResponseEntity.ok(geminiService.chatWithBot(request));
+        } catch (Exception e) {
+            return handleError(e, "AI chat");
         }
     }
 }
+

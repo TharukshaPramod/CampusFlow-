@@ -59,70 +59,75 @@ const RequireAdmin = ({ children }: { children: JSX.Element }) => {
 };
 
 import BookingCreate from "./pages/Bookings/BookingCreate";
+import { Chatbot } from "./components/chat/Chatbot";
 
 function App() {
   return (
-    <Routes>
-      <Route element={<PublicLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/auth/accept-invite" element={<AcceptInvite />} />
-      </Route>
+    <>
+      <Routes>
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/accept-invite" element={<AcceptInvite />} />
+        </Route>
 
-      <Route
-        element={
-          <RequireAuth>
-            <PublicLayout />
-          </RequireAuth>
-        }
-      >
-        <Route path="/dashboard" element={<Navigate to="/resources" replace />} />
-        <Route path="/resources" element={<Resources />} />
-        <Route path="/resources/:id" element={<ResourceDetail />} />
-        <Route path="/bookings" element={<Bookings />} />
-        <Route path="/bookings/new" element={<BookingCreate />} />
-        <Route path="/bookings/:id/edit" element={<BookingCreate />} />
-        <Route path="/incidents" element={<Incidents />} />
-        <Route path="/incidents/new" element={<IncidentCreate />} />
-        <Route path="/incidents/:id" element={<IncidentDetail />} />
-        <Route path="/incidents/:id/edit" element={<IncidentCreate />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/profile" element={<Profile />} />
-      </Route>
+        <Route
+          element={
+            <RequireAuth>
+              <PublicLayout />
+            </RequireAuth>
+          }
+        >
+          <Route path="/dashboard" element={<Navigate to="/resources" replace />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/resources/:id" element={<ResourceDetail />} />
+          <Route path="/bookings" element={<Bookings />} />
+          <Route path="/bookings/new" element={<BookingCreate />} />
+          <Route path="/bookings/:id/edit" element={<BookingCreate />} />
+          <Route path="/incidents" element={<Incidents />} />
+          <Route path="/incidents/new" element={<IncidentCreate />} />
+          <Route path="/incidents/:id" element={<IncidentDetail />} />
+          <Route path="/incidents/:id/edit" element={<IncidentCreate />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
 
-      <Route
-        element={
-          <RequireAdmin>
-            <DashboardLayout />
-          </RequireAdmin>
-        }
-      >
-        <Route path="/admin" element={<Dashboard />} />
-        <Route path="/admin/users" element={<Users />} />
-        <Route path="/admin/resource-types" element={<ResourceTypes />} />
-        <Route path="/admin/resources" element={<AdminResources />} />
-        <Route path="/admin/resource-analytics" element={<ResourceAnalytics />} />
-        <Route path="/admin/bookings" element={<AdminBookings />} />
-        <Route path="/admin/incidents" element={<AdminIncidents />} />
-        <Route path="/admin/incident-analytics" element={<IncidentAnalytics />} />
-      </Route>
+        <Route
+          element={
+            <RequireAdmin>
+              <DashboardLayout />
+            </RequireAdmin>
+          }
+        >
+          <Route path="/admin" element={<Dashboard />} />
+          <Route path="/admin/users" element={<Users />} />
+          <Route path="/admin/resource-types" element={<ResourceTypes />} />
+          <Route path="/admin/resources" element={<AdminResources />} />
+          <Route path="/admin/resource-analytics" element={<ResourceAnalytics />} />
+          <Route path="/admin/bookings" element={<AdminBookings />} />
+          <Route path="/admin/incidents" element={<AdminIncidents />} />
+          <Route path="/admin/incident-analytics" element={<IncidentAnalytics />} />
+        </Route>
 
-      <Route
-        element={
-          <RequireAdmin>
-            <PublicLayout />
-          </RequireAdmin>
-        }
-      >
-        <Route path="/resources/create" element={<ResourceCreate />} />
-        <Route path="/resources/:id/edit" element={<ResourceCreate />} />
-      </Route>
+        <Route
+          element={
+            <RequireAdmin>
+              <PublicLayout />
+            </RequireAdmin>
+          }
+        >
+          <Route path="/resources/create" element={<ResourceCreate />} />
+          <Route path="/resources/:id/edit" element={<ResourceCreate />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      
+      <Chatbot />
+    </>
   );
 }
 
