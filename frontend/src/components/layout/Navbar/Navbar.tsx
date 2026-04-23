@@ -54,7 +54,7 @@ export const Navbar = () => {
   /* ── Dynamic styles ── */
   const headerClass = isScrolled
     ? 'bg-white/95 backdrop-blur-xl shadow-md border-b border-slate-200/50 py-2.5'
-    : 'bg-white/98 backdrop-blur-xl shadow-sm border-b border-slate-100 py-3';
+    : 'bg-white/95 backdrop-blur-xl shadow-sm border-b border-slate-100 py-3';
 
   const linkClass = (active: boolean) => {
     if (active) return 'text-primary font-semibold';

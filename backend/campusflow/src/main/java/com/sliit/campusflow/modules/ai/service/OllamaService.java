@@ -2,7 +2,7 @@ package com.sliit.campusflow.modules.ai.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sliit.campusflow.modules.ai.config.GeminiProperties;
+import com.sliit.campusflow.modules.ai.config.OllamaProperties;
 import com.sliit.campusflow.modules.ai.dto.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,23 +17,21 @@ import java.util.Map;
 
 @Service
 @Slf4j
-public class GeminiService {
+public class OllamaService {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final String apiKey;
     private final String model;
     private final String baseUrl;
 
-    public GeminiService(GeminiProperties props, ObjectMapper objectMapper) {
-        this.apiKey = props.getApiKey();
+    public OllamaService(OllamaProperties props, ObjectMapper objectMapper) {
         this.model = props.getModel();
         this.baseUrl = props.getBaseUrl();
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
-        log.info("GeminiService initialized — model={}, baseUrl={}", model, baseUrl);
+        log.info("OllamaService initialized — model={}, baseUrl={}", model, baseUrl);
     }
 
     /**
@@ -54,7 +52,7 @@ public class GeminiService {
             {"suggestedCategory": "...", "suggestedPriority": "...", "reasoning": "..."}
             """, sanitize(request.getTitle()), sanitize(request.getDescription()));
 
-        String response = callGemini(prompt);
+        String response = callOllama(prompt);
         return parseTriageResponse(response);
     }
 
@@ -86,7 +84,7 @@ public class GeminiService {
                 sanitize(request.getLocation()),
                 sanitize(request.getDescription()));
 
-        String response = callGemini(prompt);
+        String response = callOllama(prompt);
         return parseResolutionResponse(response);
     }
 
@@ -124,13 +122,9 @@ public class GeminiService {
                 sanitize(request.getIncidentDescription()),
                 commentBlock.toString());
 
-        String response = callGemini(prompt);
+        String response = callOllama(prompt);
         return parseSummarizeResponse(response);
     }
-
-    // ──────────────────────────────────────────────────────────────
-    //  Internal helpers
-    // ──────────────────────────────────────────────────────────────
 
     /**
      * Feature 4: Chatbot
@@ -144,93 +138,59 @@ public class GeminiService {
             User message: %s
             """, sanitize(request.getMessage()));
 
-        String response = callGemini(prompt);
+        String response = callOllama(prompt);
         return AiChatResponse.builder().response(response).build();
     }
 
-    private String callGemini(String prompt) {
-        String fullUrl = baseUrl + "/models/" + model + ":generateContent?key=" + apiKey;
-        int maxRetries = 3;
+    // ──────────────────────────────────────────────────────────────
+    //  Internal helpers
+    // ──────────────────────────────────────────────────────────────
 
+    private String callOllama(String prompt) {
+        String fullUrl = baseUrl + "/api/generate";
+        
         try {
             Map<String, Object> requestBody = Map.of(
-                "contents", List.of(
-                    Map.of("parts", List.of(
-                        Map.of("text", prompt)
-                    ))
-                ),
-                "generationConfig", Map.of(
-                    "temperature", 0.3,
-                    "maxOutputTokens", 4096
+                "model", model,
+                "prompt", prompt,
+                "stream", false,
+                "options", Map.of(
+                    "temperature", 0.3
                 )
             );
 
             String jsonBody = objectMapper.writeValueAsString(requestBody);
-            log.debug("Gemini request URL: {}", fullUrl.replaceAll("key=.*", "key=***"));
+            log.debug("Ollama request URL: {}", fullUrl);
 
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(fullUrl))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(30))
+                    // Increase timeout for local model generation
+                    .timeout(Duration.ofSeconds(60))
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
-            // Retry loop for rate limiting (429) and high demand (503)
-            HttpResponse<String> httpResponse = null;
-            for (int attempt = 1; attempt <= maxRetries; attempt++) {
-                httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-                log.debug("Gemini response status: {} (attempt {})", httpResponse.statusCode(), attempt);
-
-                if (httpResponse.statusCode() == 429 || httpResponse.statusCode() == 503) {
-                    if (attempt < maxRetries) {
-                        long waitMs = (long) Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-                        log.warn("Gemini service busy ({}). Retrying in {}ms (attempt {}/{})", httpResponse.statusCode(), waitMs, attempt, maxRetries);
-                        Thread.sleep(waitMs);
-                        continue;
-                    }
-                    throw new RuntimeException("AI service is busy right now. Please wait a moment and try again.");
-                }
-                break; // Not a 429 or 503, exit retry loop
-            }
-
-            if (httpResponse == null) {
-                throw new RuntimeException("AI service returned no response.");
-            }
+            HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            log.debug("Ollama response status: {}", httpResponse.statusCode());
 
             if (httpResponse.statusCode() != 200) {
-                log.error("Gemini API returned HTTP {}: {}", httpResponse.statusCode(), httpResponse.body());
-                throw new RuntimeException("Gemini API returned HTTP " + httpResponse.statusCode());
+                log.error("Ollama API returned HTTP {}: {}", httpResponse.statusCode(), httpResponse.body());
+                throw new RuntimeException("Ollama API returned HTTP " + httpResponse.statusCode());
             }
 
             String responseBody = httpResponse.body();
-
-            // Extract text from Gemini response structure
             JsonNode root = objectMapper.readTree(responseBody);
 
-            // Check for API-level errors
-            if (root.has("error")) {
-                String errorMsg = root.path("error").path("message").asText("Unknown API error");
-                log.error("Gemini API error: {}", errorMsg);
-                throw new RuntimeException("Gemini API error: " + errorMsg);
+            if (root.has("response")) {
+                String text = root.path("response").asText("");
+                log.debug("Ollama extracted text: {}", text);
+                return text;
             }
 
-            JsonNode candidates = root.path("candidates");
-            if (candidates.isArray() && !candidates.isEmpty()) {
-                JsonNode content = candidates.get(0).path("content");
-                JsonNode parts = content.path("parts");
-                if (parts.isArray() && !parts.isEmpty()) {
-                    String text = parts.get(0).path("text").asText("");
-                    log.debug("Gemini extracted text: {}", text);
-                    return text;
-                }
-            }
-
-            log.warn("Gemini returned unexpected structure: {}", responseBody);
+            log.warn("Ollama returned unexpected structure: {}", responseBody);
             return "{}";
-        } catch (RuntimeException e) {
-            throw e;
         } catch (Exception e) {
-            log.error("Gemini API call failed: {}", e.getMessage(), e);
+            log.error("Ollama API call failed: {}", e.getMessage(), e);
             throw new RuntimeException("AI service is temporarily unavailable: " + e.getMessage());
         }
     }

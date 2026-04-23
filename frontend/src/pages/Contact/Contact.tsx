@@ -49,7 +49,7 @@ const Contact = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 pb-12">
+    <div className="min-h-screen bg-slate-50 pt-24 pb-12 relative">
       {/* Background decoration */}
       <div className="absolute top-0 inset-x-0 h-96 bg-gradient-to-b from-blue-600 to-cyan-500 overflow-hidden z-0">
         <div className="absolute inset-0 bg-[url('/images/grid.svg')] opacity-20"></div>
