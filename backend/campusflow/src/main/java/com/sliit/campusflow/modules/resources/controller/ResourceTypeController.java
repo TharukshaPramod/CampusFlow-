@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -20,6 +21,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @RestController
@@ -72,26 +75,47 @@ public class ResourceTypeController {
     @PostMapping
     @Operation(summary = "Create a new resource type")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResourceTypeResponse> createResourceType(
+    public ResponseEntity<?> createResourceType(
             @Valid @RequestBody ResourceTypeRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(resourceTypeService.createResourceType(request));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(resourceTypeService.createResourceType(request));
+        } catch (IllegalArgumentException | IllegalStateException | DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing resource type")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResourceTypeResponse> updateResourceType(
+    public ResponseEntity<?> updateResourceType(
             @PathVariable @NonNull UUID id,
             @Valid @RequestBody ResourceTypeRequest request) {
-        return ResponseEntity.ok(resourceTypeService.updateResourceType(id, request));
+        try {
+            return ResponseEntity.ok(resourceTypeService.updateResourceType(id, request));
+        } catch (NoSuchElementException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", ex.getMessage()));
+        } catch (IllegalArgumentException | IllegalStateException | DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a resource type")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteResourceType(@PathVariable @NonNull UUID id) {
-        resourceTypeService.deleteResourceType(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteResourceType(@PathVariable @NonNull UUID id) {
+        try {
+            resourceTypeService.deleteResourceType(id);
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", ex.getMessage()));
+        } catch (IllegalStateException | DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", ex.getMessage()));
+        }
     }
 }

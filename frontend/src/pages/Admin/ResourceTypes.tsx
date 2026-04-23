@@ -76,8 +76,8 @@ export default function ResourceTypes() {
       }
       await fetchResourceTypes();
       handleCancel();
-    } catch {
-      setFormError("Failed to save resource type. Please check all fields.");
+    } catch (err: any) {
+      setFormError(err?.message || "Failed to save resource type. Please check all fields.");
     } finally {
       setSaving(false);
     }
@@ -88,8 +88,8 @@ export default function ResourceTypes() {
     try {
       await resourceTypeService.delete(id);
       await fetchResourceTypes();
-    } catch {
-      setError("Failed to delete resource type.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to delete resource type.");
     }
   };
 
