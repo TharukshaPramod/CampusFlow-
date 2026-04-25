@@ -3,12 +3,26 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../services/api/client";
 
+/**
+ * AcceptInvite — Admin/Technician invitation acceptance page.
+ *
+ * Flow:
+ *  1. On mount, the invite token from the URL is verified with the backend.
+ *  2. Step "password" — the invited user creates their account password.
+ *  3. Step "otp"      — a 6-digit OTP is sent to their email; they enter it to confirm.
+ *  4. On success, all auth data is cleared and the user is sent to /login to sign in fresh.
+ *
+ * The page is only reachable via an invitation link that contains a ?token= query param.
+ */
+
+// Defines the two sequential steps of the invite acceptance flow
 type Step = "password" | "otp";
 
+// Shape of the invite metadata returned by the backend after token verification
 type InviteMeta = {
-  name: string;
-  email: string;
-  role: string;
+  name: string; // Invitee's display name
+  email: string; // Invitee's email address
+  role: string; // Role being granted (e.g. "ADMIN", "TECHNICIAN")
 };
 
 const PASSWORD_MIN_LENGTH = 6;
@@ -21,7 +35,10 @@ const passwordRules = {
   number: (v: string) => /\d/.test(v),
   symbol: (v: string) => /[@#$!%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(v),
 };
-
+/**
+ * Returns true only when every password rule passes.
+ * Used as a gate before the password step API call.
+ */
 const isValidPassword = (value: string) =>
   passwordRules.minLength(value) &&
   passwordRules.maxLength(value) &&
@@ -31,18 +48,30 @@ const isValidPassword = (value: string) =>
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
+  // Extract the invite token from the URL — e.g. /accept-invite?token=abc123
   const token = searchParams.get("token") || "";
   const navigate = useNavigate();
 
+  // True while the initial token verification request is in flight
   const [loading, setLoading] = useState(true);
+  // Tracks which step of the two-step flow is currently active
   const [step, setStep] = useState<Step>("password");
+  // Invite metadata populated after successful token verification
   const [meta, setMeta] = useState<InviteMeta | null>(null);
+  // Controlled input values for the password and OTP fields
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
+   // True while a form submission API call is in progress (prevents double-submit)
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * On mount, verify the invite token with the backend.
+   * - If the token is missing or invalid, redirect immediately to /login.
+   * - On success, store the invitee metadata for display in the UI.
+   */
   useEffect(() => {
     const verifyInvite = async () => {
+      // Guard: a missing token means the URL is malformed or the link was opened incorrectly
       if (!token) {
         toast.error("Invitation token is missing");
         navigate("/login", { replace: true });
@@ -52,8 +81,10 @@ export default function AcceptInvite() {
       setLoading(true);
       try {
         const res = await api.get("/auth/verify-admin-invite", { params: { token } });
+        // Store invitee info (name, email, role) for display in the card header
         setMeta(res.data);
       } catch (err: any) {
+        // Token is expired, already used, or tampered with
         toast.error(err?.response?.data?.message || "Invalid invitation link");
         navigate("/login", { replace: true });
       } finally {
@@ -62,9 +93,16 @@ export default function AcceptInvite() {
     };
 
     verifyInvite();
-  }, [token, navigate]);
+  }, [token, navigate]);  // Re-runs if the token in the URL changes
+
+  /**
+   * Step 1 — Password submission.
+   * Validates the password locally before sending it to the backend.
+   * On success, the backend triggers an OTP email and we advance to the OTP step.
+   */
 
   const submitPassword = async () => {
+    // Client-side validation guard — avoids an unnecessary network round-trip
     if (!isValidPassword(password)) {
       toast.error("Enter a strong valid password");
       return;
@@ -82,7 +120,14 @@ export default function AcceptInvite() {
     }
   };
 
+  /**
+   * Step 2 — OTP verification.
+   * Validates that the OTP is exactly 6 digits before calling the backend.
+   * On success, clears all stored auth state and hard-redirects to /login
+   * so the user must sign in with their newly created credentials.
+   */
   const submitOtp = async () => {
+    // Basic format check — must be exactly 6 numeric digits
     if (!/^\d{6}$/.test(otp.trim())) {
       toast.error("Enter a valid 6-digit OTP");
       return;
@@ -92,8 +137,12 @@ export default function AcceptInvite() {
     try {
       await api.post("/auth/verify-admin-invite-otp", { token, code: otp.trim() });
       toast.success("Verification complete. Please login.");
+
+      // Clear any existing session so the user starts fresh at /login
       localStorage.removeItem("authToken");
       localStorage.removeItem("user");
+      // Use window.location.replace (not navigate) to force a full page reload,
+      // ensuring all in-memory auth state in React context is also wiped
       window.location.replace("/login");
       return;
     } catch (err: any) {
